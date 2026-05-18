@@ -1,9 +1,9 @@
 import {
-  assertNoValidationIssues,
   createValidationCollector,
   isRecord,
   normalizeOptionalString,
   normalizeUrl,
+  ValidationError,
   type ValidationIssue,
 } from "@/lib/validation";
 import {
@@ -165,15 +165,9 @@ export function parseProfileInput(
 ): ValidatedProfileInput {
   const result = validateProfileInput(value, additionalReservedUsernames);
 
-  if (result.ok) {
-    return result.value;
+  if (!result.ok) {
+    throw new ValidationError(result.issues);
   }
 
-  assertNoValidationIssues(result.issues);
-  return {
-    bio: null,
-    displayName: null,
-    username: "",
-    websiteUrl: null,
-  };
+  return result.value;
 }

@@ -44,10 +44,6 @@ export function normalizeOptionalString(value: unknown): string | undefined {
   return normalizedValue.length > 0 ? normalizedValue : undefined;
 }
 
-export function normalizeRequiredString(value: unknown): string | undefined {
-  return normalizeOptionalString(value);
-}
-
 export function normalizeUrl(value: string): string | undefined {
   try {
     const url = new URL(value);

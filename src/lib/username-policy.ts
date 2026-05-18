@@ -1,7 +1,7 @@
 import {
-  assertNoValidationIssues,
   createValidationCollector,
-  normalizeRequiredString,
+  normalizeOptionalString,
+  ValidationError,
   type ValidationIssue,
 } from "@/lib/validation";
 
@@ -73,7 +73,7 @@ export function validateUsername(
   additionalReservedUsernames?: Iterable<string>,
 ): UsernameValidationResult {
   const collector = createValidationCollector<"username", UsernameIssueCode>();
-  const usernameValue = normalizeRequiredString(value);
+  const usernameValue = normalizeOptionalString(value);
 
   if (typeof value !== "string") {
     collector.add("username", "invalid_type", "Username must be a string.");
@@ -136,10 +136,9 @@ export function parseUsername(
 ): string {
   const result = validateUsername(value, additionalReservedUsernames);
 
-  if (result.ok) {
-    return result.value;
+  if (!result.ok) {
+    throw new ValidationError(result.issues);
   }
 
-  assertNoValidationIssues(result.issues);
-  return "";
+  return result.value;
 }
