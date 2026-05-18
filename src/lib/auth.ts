@@ -112,7 +112,7 @@ export async function issueSession(
     ...claims,
     sessionId: claims.sessionId ?? createTokenId(),
   };
-  const token = await issueSignedToken(
+  const token = issueSignedToken(
     {
       ...sessionClaims,
       exp: expiresAt,
@@ -143,7 +143,7 @@ export async function validateSessionToken(
     return null;
   }
 
-  const payload = await verifySignedToken(token, getSessionSecret(), now);
+  const payload = verifySignedToken(token, getSessionSecret(), now);
 
   if (!payload || !isSessionClaims(payload)) {
     return null;

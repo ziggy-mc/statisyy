@@ -68,21 +68,21 @@ export function getSigningSecret(
   return secret;
 }
 
-export async function issueSignedToken(
+export function issueSignedToken(
   payload: SignedTokenPayload,
   secret: string,
-): Promise<string> {
+): string {
   const encodedPayload = encodeSegment(JSON.stringify(payload));
   const signature = signValue(encodedPayload, secret);
 
   return `${encodedPayload}.${signature}`;
 }
 
-export async function verifySignedToken(
+export function verifySignedToken(
   token: string,
   secret: string,
   now: Date = new Date(),
-): Promise<SignedTokenPayload | null> {
+): SignedTokenPayload | null {
   const [encodedPayload, encodedSignature, ...rest] = token.split(".");
 
   if (!encodedPayload || !encodedSignature || rest.length > 0) {

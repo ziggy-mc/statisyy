@@ -76,7 +76,7 @@ export async function issueCsrfToken(
 ): Promise<IssuedCsrfToken> {
   const now = options?.now ?? new Date();
   const expiresAt = new Date(now.getTime() + (options?.ttlMs ?? CSRF_TTL_MS));
-  const token = await issueSignedToken(
+  const token = issueSignedToken(
     {
       exp: expiresAt.getTime(),
       iat: now.getTime(),
@@ -129,7 +129,7 @@ export async function validateCsrfToken(
     return false;
   }
 
-  const payload = await verifySignedToken(submittedToken, getCsrfSecret(), now);
+  const payload = verifySignedToken(submittedToken, getCsrfSecret(), now);
 
   return isCsrfPayload(payload);
 }

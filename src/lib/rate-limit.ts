@@ -98,13 +98,7 @@ export class InMemoryRateLimiter {
   }
 }
 
-export function createRateLimiter(
-  options: RateLimiterOptions = {
-    max: 10,
-    windowMs: 60_000,
-  },
-): InMemoryRateLimiter {
-  return new InMemoryRateLimiter(options);
-}
-
-export const defaultRateLimiter = createRateLimiter();
+export const defaultRateLimiter = new InMemoryRateLimiter({
+  max: 10,
+  windowMs: 60_000,
+});
