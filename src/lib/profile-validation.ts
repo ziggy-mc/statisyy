@@ -49,6 +49,13 @@ export type ProfileValidationResult =
       ok: false;
     }>;
 
+const PROFILE_FIELD_LABELS: Readonly<Record<ProfileField, string>> = {
+  bio: "Bio",
+  displayName: "Display name",
+  username: "Username",
+  websiteUrl: "Website URL",
+};
+
 function validateBoundedOptionalString(
   rawValue: unknown,
   field: Exclude<ProfileField, "username">,
@@ -62,7 +69,11 @@ function validateBoundedOptionalString(
   }
 
   if (typeof rawValue !== "string") {
-    collector.add(field, "invalid_type", `${field} must be a string.`);
+    collector.add(
+      field,
+      "invalid_type",
+      `${PROFILE_FIELD_LABELS[field]} must be a string.`,
+    );
     return null;
   }
 
@@ -76,7 +87,7 @@ function validateBoundedOptionalString(
     collector.add(
       field,
       "too_long",
-      `${field} must be at most ${maxLength} characters long.`,
+      `${PROFILE_FIELD_LABELS[field]} must be at most ${maxLength} characters long.`,
     );
   }
 
