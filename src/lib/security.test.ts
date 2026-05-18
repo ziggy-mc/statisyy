@@ -13,6 +13,7 @@ import { InMemoryRateLimiter } from "@/lib/rate-limit";
 
 const PREVIOUS_SESSION_SECRET = process.env.SESSION_SECRET;
 const PREVIOUS_CSRF_SECRET = process.env.CSRF_SECRET;
+const FIXED_NOW = new Date("2026-01-01T00:00:00.000Z");
 
 process.env.SESSION_SECRET = "session-secret-value-with-at-least-thirty-two-chars";
 process.env.CSRF_SECRET = "csrf-secret-value-with-at-least-thirty-two-chars";
@@ -24,7 +25,7 @@ test("issueSession creates a verifiable signed session token", async () => {
       username: "tester",
     },
     {
-      now: new Date("2026-01-01T00:00:00.000Z"),
+      now: FIXED_NOW,
       ttlMs: 1_000,
     },
   );
@@ -49,7 +50,7 @@ test("validateSessionToken rejects expired tokens", async () => {
       userId: "user_123",
     },
     {
-      now: new Date("2026-01-01T00:00:00.000Z"),
+      now: FIXED_NOW,
       ttlMs: 1_000,
     },
   );
@@ -64,7 +65,7 @@ test("validateSessionToken rejects expired tokens", async () => {
 
 test("issueCsrfToken creates a token that validates against the cookie value", async () => {
   const issuedToken = await issueCsrfToken({
-    now: new Date("2026-01-01T00:00:00.000Z"),
+    now: FIXED_NOW,
     ttlMs: 5_000,
   });
 
@@ -93,7 +94,7 @@ test("InMemoryRateLimiter blocks requests above the configured limit", () => {
     max: 2,
     windowMs: 10_000,
   });
-  const now = new Date("2026-01-01T00:00:00.000Z");
+  const now = FIXED_NOW;
 
   assert.equal(limiter.consume("127.0.0.1", now).allowed, true);
   assert.equal(limiter.consume("127.0.0.1", now).allowed, true);
