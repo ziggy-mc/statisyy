@@ -18,7 +18,7 @@ export default function RootLayout({
         <div className="flex min-h-screen flex-col">
           <header className="border-b border-neutral-300 bg-neutral-100">
             <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-              <Link href="/" className="text-base font-semibold">
+              <Link href="/" aria-label="Return to homepage" className="text-base font-semibold">
                 statisy
               </Link>
               <p className="text-sm text-neutral-700">Scaffold</p>
