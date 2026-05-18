@@ -18,9 +18,7 @@ export default function RootLayout({
           <header className="border-b border-neutral-300 bg-neutral-100">
             <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
               <p className="text-base font-semibold">statisy</p>
-              <nav aria-label="Primary" className="text-sm text-neutral-700">
-                <span>Scaffold</span>
-              </nav>
+              <p className="text-sm text-neutral-700">Scaffold</p>
             </div>
           </header>
           <main
