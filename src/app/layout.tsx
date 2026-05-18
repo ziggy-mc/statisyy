@@ -27,7 +27,23 @@ export default function RootLayout({
               <Link href="/" aria-label="Return to homepage" className="text-base font-semibold">
                 statisy
               </Link>
-              <p className="text-sm text-neutral-700">Scaffold</p>
+              <nav aria-label="Primary" className="flex items-center gap-3 text-sm text-neutral-700">
+                <Link href="/signup" className="underline">
+                  Sign up
+                </Link>
+                <Link href="/login" className="underline">
+                  Log in
+                </Link>
+                <Link href="/account" className="underline">
+                  Account
+                </Link>
+                <Link href="/verify-email" className="underline">
+                  Verify email
+                </Link>
+                <Link href="/logout" className="underline">
+                  Log out
+                </Link>
+              </nav>
             </div>
           </header>
           <main
