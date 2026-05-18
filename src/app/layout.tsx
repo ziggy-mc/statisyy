@@ -15,6 +15,12 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full bg-neutral-100 text-neutral-900 antialiased">
       <body className="min-h-full">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:border focus:border-neutral-300 focus:bg-white focus:px-3 focus:py-2"
+        >
+          Skip to main content
+        </a>
         <div className="flex min-h-screen flex-col">
           <header className="border-b border-neutral-300 bg-neutral-100">
             <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
