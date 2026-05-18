@@ -47,6 +47,7 @@ test("parseUsername throws a typed validation error on invalid input", () => {
 
 test("validateProfileInput returns normalized profile data", () => {
   const result = validateProfileInput({
+    avatarUrl: "https://example.com/avatar.png",
     bio: "  builder  ",
     displayName: "  Test User  ",
     username: "  Test_User  ",
@@ -56,10 +57,30 @@ test("validateProfileInput returns normalized profile data", () => {
   assert.deepEqual(result, {
     ok: true,
     value: {
+      avatarUrl: "https://example.com/avatar.png",
       bio: "builder",
       displayName: "Test User",
       username: "test_user",
       websiteUrl: "https://example.com/about",
+    },
+  });
+});
+
+test("validateProfileInput sanitizes display and bio text", () => {
+  const result = validateProfileInput({
+    bio: " <script>alert(1)</script> ",
+    displayName: " <b>Builder</b> ",
+    username: "valid_user",
+  });
+
+  assert.deepEqual(result, {
+    ok: true,
+    value: {
+      avatarUrl: null,
+      bio: "scriptalert(1)/script",
+      displayName: "bBuilder/b",
+      username: "valid_user",
+      websiteUrl: null,
     },
   });
 });
@@ -74,5 +95,18 @@ test("parseProfileInput throws on invalid website URLs", () => {
     (error: unknown) =>
       error instanceof ValidationError &&
       error.issues.some((issue) => issue.code === "invalid_url"),
+  );
+});
+
+test("parseProfileInput throws on invalid avatar URLs", () => {
+  assert.throws(
+    () =>
+      parseProfileInput({
+        avatarUrl: "https://example.com/avatar.exe",
+        username: "valid_user",
+      }),
+    (error: unknown) =>
+      error instanceof ValidationError &&
+      error.issues.some((issue) => issue.code === "invalid_avatar_url"),
   );
 });
