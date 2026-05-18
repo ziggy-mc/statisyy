@@ -97,16 +97,13 @@ export function parseSignupInput(value: unknown): SignupInput {
 
   const issues = collector.issues();
 
-  if (issues.length > 0 || !usernameResult.ok || !normalizedEmailValue) {
+  if (
+    issues.length > 0 ||
+    !usernameResult.ok ||
+    !normalizedEmailValue ||
+    typeof rawPassword !== "string"
+  ) {
     throw new ValidationError(issues);
-  }
-
-  if (typeof rawPassword !== "string") {
-    throw new AppError({
-      code: "INVALID_SIGNUP_INPUT",
-      message: "Password must be a string.",
-      statusCode: 400,
-    });
   }
 
   return {
@@ -148,16 +145,8 @@ export function parseLoginInput(value: unknown): LoginInput {
 
   const issues = collector.issues();
 
-  if (issues.length > 0 || !usernameOrEmail) {
+  if (issues.length > 0 || !usernameOrEmail || typeof rawPassword !== "string") {
     throw new ValidationError(issues);
-  }
-
-  if (typeof rawPassword !== "string") {
-    throw new AppError({
-      code: "INVALID_LOGIN_INPUT",
-      message: "Password must be a string.",
-      statusCode: 400,
-    });
   }
 
   return {

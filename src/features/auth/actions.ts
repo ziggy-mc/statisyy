@@ -7,7 +7,12 @@ import { setSessionCookie, clearSessionCookie, getSessionFromCookies } from "@/l
 import { assertCsrfToken } from "@/lib/csrf";
 import { ValidationError } from "@/lib/validation";
 
-import { loginUser, signupUser, verifyEmailToken } from "@/features/auth/service";
+import {
+  getAccountUser,
+  loginUser,
+  signupUser,
+  verifyEmailToken,
+} from "@/features/auth/service";
 
 function getStringValue(formData: FormData, key: string): string | null {
   const value = formData.get(key);
@@ -104,8 +109,11 @@ export async function verifyEmailAction(formData: FormData): Promise<void> {
     const session = await getSessionFromCookies();
 
     if (!session) {
+      const user = await getAccountUser(result.userId);
+
       await setSessionCookie({
         userId: result.userId,
+        username: user.username,
       });
     }
 
