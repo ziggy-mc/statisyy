@@ -12,7 +12,6 @@ const DEFAULT_MONGO_OPTIONS: MongoClientOptions = {
 };
 
 declare global {
-  // eslint-disable-next-line no-var
   var __statisyyMongoClientPromise: Promise<MongoClient> | undefined;
 }
 
