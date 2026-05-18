@@ -45,40 +45,6 @@ function normalizeEmail(value: string): string {
   return value.trim().toLowerCase();
 }
 
-function parsePassword(rawPassword: unknown): string {
-  if (typeof rawPassword !== "string") {
-    throw new ValidationError<"password", "invalid_type">([
-      {
-        code: "invalid_type",
-        field: "password",
-        message: "Password must be a string.",
-      },
-    ]);
-  }
-
-  if (rawPassword.length < PASSWORD_MIN_LENGTH) {
-    throw new ValidationError<"password", "password_too_short">([
-      {
-        code: "password_too_short",
-        field: "password",
-        message: `Password must be at least ${PASSWORD_MIN_LENGTH} characters long.`,
-      },
-    ]);
-  }
-
-  if (rawPassword.length > PASSWORD_MAX_LENGTH) {
-    throw new ValidationError<"password", "password_too_long">([
-      {
-        code: "password_too_long",
-        field: "password",
-        message: `Password must be at most ${PASSWORD_MAX_LENGTH} characters long.`,
-      },
-    ]);
-  }
-
-  return rawPassword;
-}
-
 export function parseSignupInput(value: unknown): SignupInput {
   if (!isRecord(value)) {
     throw new AppError({
@@ -111,15 +77,17 @@ export function parseSignupInput(value: unknown): SignupInput {
     }
   }
 
-  if (typeof value.password !== "string") {
+  const rawPassword = value.password;
+
+  if (typeof rawPassword !== "string") {
     collector.add("password", "invalid_type", "Password must be a string.");
-  } else if (value.password.length < PASSWORD_MIN_LENGTH) {
+  } else if (rawPassword.length < PASSWORD_MIN_LENGTH) {
     collector.add(
       "password",
       "password_too_short",
       `Password must be at least ${PASSWORD_MIN_LENGTH} characters long.`,
     );
-  } else if (value.password.length > PASSWORD_MAX_LENGTH) {
+  } else if (rawPassword.length > PASSWORD_MAX_LENGTH) {
     collector.add(
       "password",
       "password_too_long",
@@ -133,9 +101,17 @@ export function parseSignupInput(value: unknown): SignupInput {
     throw new ValidationError(issues);
   }
 
+  if (typeof rawPassword !== "string") {
+    throw new AppError({
+      code: "INVALID_SIGNUP_INPUT",
+      message: "Password must be a string.",
+      statusCode: 400,
+    });
+  }
+
   return {
     email: normalizeEmail(normalizedEmailValue),
-    password: value.password,
+    password: rawPassword,
     username: usernameResult.value,
   };
 }
@@ -162,9 +138,11 @@ export function parseLoginInput(value: unknown): LoginInput {
     collector.add("usernameOrEmail", "required", "Username or email is required.");
   }
 
-  if (typeof value.password !== "string") {
+  const rawPassword = value.password;
+
+  if (typeof rawPassword !== "string") {
     collector.add("password", "invalid_type", "Password must be a string.");
-  } else if (value.password.length < 1) {
+  } else if (rawPassword.length < 1) {
     collector.add("password", "required", "Password is required.");
   }
 
@@ -174,8 +152,16 @@ export function parseLoginInput(value: unknown): LoginInput {
     throw new ValidationError(issues);
   }
 
+  if (typeof rawPassword !== "string") {
+    throw new AppError({
+      code: "INVALID_LOGIN_INPUT",
+      message: "Password must be a string.",
+      statusCode: 400,
+    });
+  }
+
   return {
-    password: value.password,
+    password: rawPassword,
     usernameOrEmail,
   };
 }
@@ -196,8 +182,4 @@ export function parseVerificationToken(value: unknown): string {
   }
 
   return token;
-}
-
-export function parsePasswordInputForHashing(value: unknown): string {
-  return parsePassword(value);
 }
