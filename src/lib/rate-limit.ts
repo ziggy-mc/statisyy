@@ -70,13 +70,16 @@ export class InMemoryRateLimiter {
 
     const remaining = Math.max(this.#max - nextCount, 0);
     const allowed = nextCount <= this.#max;
+    const retryAfterSeconds = allowed
+      ? 0
+      : Math.max(Math.ceil((resetAt - nowValue) / 1000), 1);
 
     return {
       allowed,
       limit: this.#max,
       remaining,
       resetAt: new Date(resetAt),
-      retryAfterSeconds: allowed ? 0 : Math.max(Math.ceil((resetAt - nowValue) / 1000), 1),
+      retryAfterSeconds,
     };
   }
 
