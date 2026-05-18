@@ -1,11 +1,11 @@
 import {
   createValidationCollector,
   isRecord,
-  normalizeOptionalString,
   normalizeUrl,
   ValidationError,
   type ValidationIssue,
 } from "@/lib/validation";
+import { sanitizeOptionalPlainText } from "@/lib/sanitization";
 import {
   validateUsername,
   type UsernameIssueCode,
@@ -14,8 +14,20 @@ import {
 export const PROFILE_DISPLAY_NAME_MAX_LENGTH = 80;
 export const PROFILE_BIO_MAX_LENGTH = 160;
 export const PROFILE_WEBSITE_MAX_LENGTH = 2_048;
+export const PROFILE_AVATAR_URL_MAX_LENGTH = 2_048;
+
+const ALLOWED_AVATAR_EXTENSIONS = new Set([
+  ".avif",
+  ".gif",
+  ".jpeg",
+  ".jpg",
+  ".png",
+  ".svg",
+  ".webp",
+]);
 
 export type ProfileInput = Readonly<{
+  avatarUrl?: string | null;
   bio?: string | null;
   displayName?: string | null;
   username: string;
@@ -23,6 +35,7 @@ export type ProfileInput = Readonly<{
 }>;
 
 export type ValidatedProfileInput = Readonly<{
+  avatarUrl: string | null;
   bio: string | null;
   displayName: string | null;
   username: string;
@@ -33,6 +46,7 @@ export type ProfileField = keyof ProfileInput;
 
 export type ProfileIssueCode =
   | UsernameIssueCode
+  | "invalid_avatar_url"
   | "invalid_type"
   | "too_long"
   | "invalid_url";
@@ -50,6 +64,7 @@ export type ProfileValidationResult =
     }>;
 
 const PROFILE_FIELD_LABELS: Readonly<Record<ProfileField, string>> = {
+  avatarUrl: "Avatar URL",
   bio: "Bio",
   displayName: "Display name",
   username: "Username",
@@ -77,7 +92,7 @@ function validateBoundedOptionalString(
     return null;
   }
 
-  const normalizedValue = normalizeOptionalString(rawValue);
+  const normalizedValue = sanitizeOptionalPlainText(rawValue);
 
   if (!normalizedValue) {
     return null;
@@ -92,6 +107,67 @@ function validateBoundedOptionalString(
   }
 
   return normalizedValue;
+}
+
+function hasAllowedAvatarExtension(pathname: string): boolean {
+  if (!pathname) {
+    return true;
+  }
+
+  const normalizedPathname = pathname.toLowerCase();
+  const extensionStart = normalizedPathname.lastIndexOf(".");
+
+  if (extensionStart < 0) {
+    return true;
+  }
+
+  const extension = normalizedPathname.slice(extensionStart);
+
+  return ALLOWED_AVATAR_EXTENSIONS.has(extension);
+}
+
+function validateAvatarUrl(
+  avatarInput: string | null,
+  collector: ReturnType<
+    typeof createValidationCollector<ProfileField, ProfileIssueCode>
+  >,
+): string | null {
+  if (avatarInput === null) {
+    return null;
+  }
+
+  const normalizedAvatarUrl = normalizeUrl(avatarInput);
+
+  if (normalizedAvatarUrl === undefined) {
+    collector.add(
+      "avatarUrl",
+      "invalid_avatar_url",
+      "Avatar URL must be a valid HTTP or HTTPS URL.",
+    );
+    return null;
+  }
+
+  try {
+    const parsedUrl = new URL(normalizedAvatarUrl);
+
+    if (!hasAllowedAvatarExtension(parsedUrl.pathname)) {
+      collector.add(
+        "avatarUrl",
+        "invalid_avatar_url",
+        "Avatar URL must end with a supported image extension.",
+      );
+      return null;
+    }
+  } catch {
+    collector.add(
+      "avatarUrl",
+      "invalid_avatar_url",
+      "Avatar URL must be a valid HTTP or HTTPS URL.",
+    );
+    return null;
+  }
+
+  return normalizedAvatarUrl;
 }
 
 export function validateProfileInput(
@@ -138,6 +214,12 @@ export function validateProfileInput(
     PROFILE_WEBSITE_MAX_LENGTH,
     collector,
   );
+  const avatarInput = validateBoundedOptionalString(
+    value.avatarUrl,
+    "avatarUrl",
+    PROFILE_AVATAR_URL_MAX_LENGTH,
+    collector,
+  );
 
   const websiteUrl =
     websiteInput === null ? null : normalizeUrl(websiteInput) ?? null;
@@ -149,6 +231,8 @@ export function validateProfileInput(
       "Website URL must be a valid HTTP or HTTPS URL.",
     );
   }
+
+  const avatarUrl = validateAvatarUrl(avatarInput, collector);
 
   const issues = collector.issues();
 
@@ -162,6 +246,7 @@ export function validateProfileInput(
   return {
     ok: true,
     value: {
+      avatarUrl,
       bio,
       displayName,
       username: usernameResult.value,
