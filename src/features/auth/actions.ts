@@ -1,13 +1,14 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 
 import { asAppError } from "@/lib/app-error";
 import { writeAuditLog } from "@/lib/audit-log";
 import { setSessionCookie, clearSessionCookie, getSessionFromCookies } from "@/lib/auth";
 import { assertCsrfToken } from "@/lib/csrf";
 import { enforceQuota } from "@/lib/quota";
-import { getRequestContext } from "@/lib/request-context";
+import { getRequestContextSafe } from "@/lib/request-context";
 import { ValidationError } from "@/lib/validation";
 
 import {
@@ -37,9 +38,13 @@ function getAuditOutcome(statusCode: number): "denied" | "failure" {
 }
 
 export async function signupAction(formData: FormData): Promise<void> {
-  const requestContext = await getRequestContext();
+  const requestContext = await getRequestContextSafe("signupAction");
 
   try {
+    console.debug("[auth-action] signup start", {
+      requestId: requestContext.requestId,
+    });
+
     const username = getStringValue(formData, "username") ?? MISSING_USERNAME;
     const email = getStringValue(formData, "email") ?? MISSING_EMAIL;
 
@@ -69,7 +74,16 @@ export async function signupAction(formData: FormData): Promise<void> {
 
     redirect(`/verify-email?token=${encodeURIComponent(result.verificationToken)}`);
   } catch (error: unknown) {
+    if (isRedirectError(error)) {
+      throw error;
+    }
+
     if (error instanceof ValidationError) {
+      console.debug("[auth-action] signup validation failure", {
+        code: getValidationErrorCode(error),
+        requestId: requestContext.requestId,
+      });
+
       writeAuditLog({
         action: "auth.signup",
         code: getValidationErrorCode(error),
@@ -89,6 +103,12 @@ export async function signupAction(formData: FormData): Promise<void> {
       statusCode: 500,
     });
 
+    console.debug("[auth-action] signup failure", {
+      code: appError.code,
+      requestId: requestContext.requestId,
+      statusCode: appError.statusCode,
+    });
+
     writeAuditLog({
       action: "auth.signup",
       code: appError.code,
@@ -104,9 +124,13 @@ export async function signupAction(formData: FormData): Promise<void> {
 }
 
 export async function loginAction(formData: FormData): Promise<void> {
-  const requestContext = await getRequestContext();
+  const requestContext = await getRequestContextSafe("loginAction");
 
   try {
+    console.debug("[auth-action] login start", {
+      requestId: requestContext.requestId,
+    });
+
     const identifier = getStringValue(formData, "usernameOrEmail") ?? MISSING_IDENTIFIER;
 
     await assertCsrfToken(getStringValue(formData, "csrfToken"));
@@ -134,7 +158,16 @@ export async function loginAction(formData: FormData): Promise<void> {
 
     redirect("/account");
   } catch (error: unknown) {
+    if (isRedirectError(error)) {
+      throw error;
+    }
+
     if (error instanceof ValidationError) {
+      console.debug("[auth-action] login validation failure", {
+        code: getValidationErrorCode(error),
+        requestId: requestContext.requestId,
+      });
+
       writeAuditLog({
         action: "auth.login",
         code: getValidationErrorCode(error),
@@ -154,6 +187,12 @@ export async function loginAction(formData: FormData): Promise<void> {
       statusCode: 500,
     });
 
+    console.debug("[auth-action] login failure", {
+      code: appError.code,
+      requestId: requestContext.requestId,
+      statusCode: appError.statusCode,
+    });
+
     writeAuditLog({
       action: "auth.login",
       code: appError.code,
@@ -169,9 +208,13 @@ export async function loginAction(formData: FormData): Promise<void> {
 }
 
 export async function logoutAction(formData: FormData): Promise<void> {
-  const requestContext = await getRequestContext();
+  const requestContext = await getRequestContextSafe("logoutAction");
 
   try {
+    console.debug("[auth-action] logout start", {
+      requestId: requestContext.requestId,
+    });
+
     await assertCsrfToken(getStringValue(formData, "csrfToken"));
 
     const session = await getSessionFromCookies();
@@ -189,10 +232,20 @@ export async function logoutAction(formData: FormData): Promise<void> {
 
     redirect("/login?logged_out=1");
   } catch (error: unknown) {
+    if (isRedirectError(error)) {
+      throw error;
+    }
+
     const appError = asAppError(error, {
       code: "LOGOUT_FAILED",
       message: "Unable to log out.",
       statusCode: 500,
+    });
+
+    console.debug("[auth-action] logout failure", {
+      code: appError.code,
+      requestId: requestContext.requestId,
+      statusCode: appError.statusCode,
     });
 
     writeAuditLog({
@@ -210,9 +263,13 @@ export async function logoutAction(formData: FormData): Promise<void> {
 }
 
 export async function verifyEmailAction(formData: FormData): Promise<void> {
-  const requestContext = await getRequestContext();
+  const requestContext = await getRequestContextSafe("verifyEmailAction");
 
   try {
+    console.debug("[auth-action] verify-email start", {
+      requestId: requestContext.requestId,
+    });
+
     const token = getStringValue(formData, "token") ?? MISSING_TOKEN;
 
     await assertCsrfToken(getStringValue(formData, "csrfToken"));
@@ -242,7 +299,16 @@ export async function verifyEmailAction(formData: FormData): Promise<void> {
 
     redirect("/account?verified=1");
   } catch (error: unknown) {
+    if (isRedirectError(error)) {
+      throw error;
+    }
+
     if (error instanceof ValidationError) {
+      console.debug("[auth-action] verify-email validation failure", {
+        code: getValidationErrorCode(error),
+        requestId: requestContext.requestId,
+      });
+
       writeAuditLog({
         action: "auth.verifyEmail",
         code: getValidationErrorCode(error),
@@ -260,6 +326,12 @@ export async function verifyEmailAction(formData: FormData): Promise<void> {
       code: "VERIFY_EMAIL_FAILED",
       message: "Unable to verify email.",
       statusCode: 500,
+    });
+
+    console.debug("[auth-action] verify-email failure", {
+      code: appError.code,
+      requestId: requestContext.requestId,
+      statusCode: appError.statusCode,
     });
 
     writeAuditLog({

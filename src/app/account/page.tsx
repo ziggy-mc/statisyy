@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 
+import { asAppError } from "@/lib/app-error";
 import { getSessionFromCookies } from "@/lib/auth";
 import { setCsrfCookie } from "@/lib/csrf";
 
@@ -17,13 +19,13 @@ import {
   TextArea,
 } from "@/components/ui/primitives";
 import { logoutAction } from "@/features/auth/actions";
-import { getAccountUser } from "@/features/auth/service";
+import { type AuthUser, getAccountUser } from "@/features/auth/service";
 import {
   publishProfileAction,
   saveProfileDraftAction,
   unpublishProfileAction,
 } from "@/features/profile/actions";
-import { getOwnerProfile } from "@/features/profile/service";
+import { type OwnerProfile, getOwnerProfile } from "@/features/profile/service";
 
 type AccountPageProps = Readonly<{
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -46,26 +48,71 @@ function readProfileError(errorCode: string | null): string | null {
 }
 
 export default async function AccountPage({ searchParams }: AccountPageProps) {
-  const session = await getSessionFromCookies();
+  let csrfTokenValue = "";
+  let user: AuthUser | null = null;
+  let profile: OwnerProfile | null = null;
+  let verifiedNotice = false;
+  let profileSavedNotice = false;
+  let profilePublishedNotice = false;
+  let profileUnpublishedNotice = false;
+  let profileErrorMessage: string | null = null;
+  let loadErrorCode: string | null = null;
 
-  if (!session) {
-    redirect("/login");
+  try {
+    const session = await getSessionFromCookies();
+
+    if (!session) {
+      redirect("/login");
+    }
+
+    const [csrfToken, loadedUser, loadedProfile, params] = await Promise.all([
+      setCsrfCookie(),
+      getAccountUser(session.userId),
+      getOwnerProfile(session.userId, session.username ?? ""),
+      searchParams,
+    ]);
+
+    verifiedNotice = params.verified === "1";
+    profileSavedNotice = params.profile_saved === "1";
+    profilePublishedNotice = params.profile_published === "1";
+    profileUnpublishedNotice = params.profile_unpublished === "1";
+
+    const profileErrorCode =
+      typeof params.profile_error === "string" ? params.profile_error : null;
+
+    profileErrorMessage = readProfileError(profileErrorCode);
+    csrfTokenValue = csrfToken.token;
+    user = loadedUser;
+    profile = loadedProfile;
+  } catch (error: unknown) {
+    if (isRedirectError(error)) {
+      throw error;
+    }
+
+    const appError = asAppError(error, {
+      code: "ACCOUNT_PAGE_LOAD_FAILED",
+      message: "Unable to load account page.",
+      statusCode: 500,
+    });
+
+    console.debug("[page] account render failed", {
+      code: appError.code,
+      statusCode: appError.statusCode,
+    });
+
+    loadErrorCode = appError.code;
   }
 
-  const [csrfToken, user, profile, params] = await Promise.all([
-    setCsrfCookie(),
-    getAccountUser(session.userId),
-    getOwnerProfile(session.userId, session.username ?? ""),
-    searchParams,
-  ]);
-
-  const verifiedNotice = params.verified === "1";
-  const profileSavedNotice = params.profile_saved === "1";
-  const profilePublishedNotice = params.profile_published === "1";
-  const profileUnpublishedNotice = params.profile_unpublished === "1";
-  const profileErrorCode =
-    typeof params.profile_error === "string" ? params.profile_error : null;
-  const profileErrorMessage = readProfileError(profileErrorCode);
+  if (loadErrorCode || !user || !profile) {
+    return (
+      <PageSection>
+        <Heading>Account</Heading>
+        <Alert tone="error" role="alert">
+          Unable to load account right now. ({loadErrorCode ?? "ACCOUNT_PAGE_LOAD_FAILED"})
+        </Alert>
+      </PageSection>
+    );
+  }
 
   return (
     <PageSection>
@@ -127,7 +174,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
         <Subheading>Profile editor</Subheading>
         <BodyText>Status: {profile.isPublished ? "Published" : "Draft"}</BodyText>
         <form action={saveProfileDraftAction} className="grid gap-4">
-          <input type="hidden" name="csrfToken" value={csrfToken.token} />
+          <input type="hidden" name="csrfToken" value={csrfTokenValue} />
           <Label>
             Display name
             <Input
@@ -165,14 +212,14 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
         </form>
         {profile.isPublished ? (
           <form action={unpublishProfileAction}>
-            <input type="hidden" name="csrfToken" value={csrfToken.token} />
+            <input type="hidden" name="csrfToken" value={csrfTokenValue} />
             <Button type="submit" variant="secondary">
               Unpublish profile
             </Button>
           </form>
         ) : (
           <form action={publishProfileAction}>
-            <input type="hidden" name="csrfToken" value={csrfToken.token} />
+            <input type="hidden" name="csrfToken" value={csrfTokenValue} />
             <Button type="submit" variant="secondary">
               Publish profile
             </Button>
@@ -181,7 +228,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
       </Card>
       <Card>
         <form action={logoutAction}>
-          <input type="hidden" name="csrfToken" value={csrfToken.token} />
+          <input type="hidden" name="csrfToken" value={csrfTokenValue} />
           <Button type="submit" variant="danger">
             Log out
           </Button>

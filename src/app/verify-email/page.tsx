@@ -1,3 +1,4 @@
+import { asAppError } from "@/lib/app-error";
 import { setCsrfCookie } from "@/lib/csrf";
 
 import {
@@ -29,13 +30,44 @@ function readVerifyError(errorCode: string | null): string | null {
 }
 
 export default async function VerifyEmailPage({ searchParams }: VerifyEmailPageProps) {
-  const csrfToken = await setCsrfCookie();
-  const params = await searchParams;
-  const tokenParam = params.token;
-  const errorParam = params.error;
-  const defaultToken = typeof tokenParam === "string" ? tokenParam : "";
-  const errorCode = typeof errorParam === "string" ? errorParam : null;
-  const errorMessage = readVerifyError(errorCode);
+  let csrfTokenValue = "";
+  let defaultToken = "";
+  let errorMessage: string | null = null;
+  let loadErrorCode: string | null = null;
+
+  try {
+    const csrfToken = await setCsrfCookie();
+    const params = await searchParams;
+    const tokenParam = params.token;
+    const errorParam = params.error;
+    defaultToken = typeof tokenParam === "string" ? tokenParam : "";
+    const errorCode = typeof errorParam === "string" ? errorParam : null;
+    errorMessage = readVerifyError(errorCode);
+    csrfTokenValue = csrfToken.token;
+  } catch (error: unknown) {
+    const appError = asAppError(error, {
+      code: "VERIFY_EMAIL_PAGE_LOAD_FAILED",
+      message: "Unable to load verify email page.",
+      statusCode: 500,
+    });
+
+    console.debug("[page] verify-email render failed", {
+      code: appError.code,
+      statusCode: appError.statusCode,
+    });
+    loadErrorCode = appError.code;
+  }
+
+  if (loadErrorCode) {
+    return (
+      <PageSection>
+        <Heading>Verify email</Heading>
+        <Alert tone="error" role="alert">
+          Unable to load email verification right now. ({loadErrorCode})
+        </Alert>
+      </PageSection>
+    );
+  }
 
   return (
     <PageSection>
@@ -48,7 +80,7 @@ export default async function VerifyEmailPage({ searchParams }: VerifyEmailPageP
       ) : null}
       <Card>
         <form action={verifyEmailAction} className="flex flex-col gap-4">
-          <input type="hidden" name="csrfToken" value={csrfToken.token} />
+          <input type="hidden" name="csrfToken" value={csrfTokenValue} />
           <Label>
             Token
             <Input

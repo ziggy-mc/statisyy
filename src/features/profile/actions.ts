@@ -1,13 +1,14 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 
 import { asAppError } from "@/lib/app-error";
 import { writeAuditLog } from "@/lib/audit-log";
 import { requireSession, type SessionRecord } from "@/lib/auth";
 import { assertCsrfToken } from "@/lib/csrf";
 import { enforceQuota } from "@/lib/quota";
-import { getRequestContext } from "@/lib/request-context";
+import { getRequestContextSafe } from "@/lib/request-context";
 import { ValidationError } from "@/lib/validation";
 
 import { getAccountUser } from "@/features/auth/service";
@@ -41,9 +42,13 @@ async function resolveSessionUsername(session: SessionRecord): Promise<string> {
 }
 
 export async function saveProfileDraftAction(formData: FormData): Promise<void> {
-  const requestContext = await getRequestContext();
+  const requestContext = await getRequestContextSafe("saveProfileDraftAction");
 
   try {
+    console.debug("[profile-action] save-draft start", {
+      requestId: requestContext.requestId,
+    });
+
     await assertCsrfToken(getStringValue(formData, "csrfToken"));
 
     const session = await requireSession();
@@ -73,6 +78,10 @@ export async function saveProfileDraftAction(formData: FormData): Promise<void> 
 
     redirect("/account?profile_saved=1");
   } catch (error: unknown) {
+    if (isRedirectError(error)) {
+      throw error;
+    }
+
     if (error instanceof ValidationError) {
       writeAuditLog({
         action: "profile.saveDraft",
@@ -110,9 +119,13 @@ export async function saveProfileDraftAction(formData: FormData): Promise<void> 
 }
 
 export async function publishProfileAction(formData: FormData): Promise<void> {
-  const requestContext = await getRequestContext();
+  const requestContext = await getRequestContextSafe("publishProfileAction");
 
   try {
+    console.debug("[profile-action] publish start", {
+      requestId: requestContext.requestId,
+    });
+
     await assertCsrfToken(getStringValue(formData, "csrfToken"));
 
     const session = await requireSession();
@@ -132,6 +145,10 @@ export async function publishProfileAction(formData: FormData): Promise<void> {
 
     redirect("/account?profile_published=1");
   } catch (error: unknown) {
+    if (isRedirectError(error)) {
+      throw error;
+    }
+
     const appError = asAppError(error, {
       code: "PUBLISH_PROFILE_FAILED",
       message: "Unable to publish profile.",
@@ -153,9 +170,13 @@ export async function publishProfileAction(formData: FormData): Promise<void> {
 }
 
 export async function unpublishProfileAction(formData: FormData): Promise<void> {
-  const requestContext = await getRequestContext();
+  const requestContext = await getRequestContextSafe("unpublishProfileAction");
 
   try {
+    console.debug("[profile-action] unpublish start", {
+      requestId: requestContext.requestId,
+    });
+
     await assertCsrfToken(getStringValue(formData, "csrfToken"));
 
     const session = await requireSession();
@@ -175,6 +196,10 @@ export async function unpublishProfileAction(formData: FormData): Promise<void> 
 
     redirect("/account?profile_unpublished=1");
   } catch (error: unknown) {
+    if (isRedirectError(error)) {
+      throw error;
+    }
+
     const appError = asAppError(error, {
       code: "UNPUBLISH_PROFILE_FAILED",
       message: "Unable to unpublish profile.",

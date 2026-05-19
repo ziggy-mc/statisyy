@@ -1,3 +1,4 @@
+import { asAppError } from "@/lib/app-error";
 import Link from "next/link";
 
 import { setCsrfCookie } from "@/lib/csrf";
@@ -32,12 +33,43 @@ function readLoginError(errorCode: string | null): string | null {
 }
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
-  const csrfToken = await setCsrfCookie();
-  const params = await searchParams;
-  const rawError = params.error;
-  const loggedOut = params.logged_out === "1";
-  const errorCode = typeof rawError === "string" ? rawError : null;
-  const errorMessage = readLoginError(errorCode);
+  let csrfTokenValue = "";
+  let loggedOut = false;
+  let errorMessage: string | null = null;
+  let loadErrorCode: string | null = null;
+
+  try {
+    const csrfToken = await setCsrfCookie();
+    const params = await searchParams;
+    const rawError = params.error;
+    loggedOut = params.logged_out === "1";
+    const errorCode = typeof rawError === "string" ? rawError : null;
+    errorMessage = readLoginError(errorCode);
+    csrfTokenValue = csrfToken.token;
+  } catch (error: unknown) {
+    const appError = asAppError(error, {
+      code: "LOGIN_PAGE_LOAD_FAILED",
+      message: "Unable to load login page.",
+      statusCode: 500,
+    });
+
+    console.debug("[page] login render failed", {
+      code: appError.code,
+      statusCode: appError.statusCode,
+    });
+    loadErrorCode = appError.code;
+  }
+
+  if (loadErrorCode) {
+    return (
+      <PageSection>
+        <Heading>Log in</Heading>
+        <Alert tone="error" role="alert">
+          Unable to load login right now. ({loadErrorCode})
+        </Alert>
+      </PageSection>
+    );
+  }
 
   return (
     <PageSection>
@@ -55,7 +87,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       ) : null}
       <Card>
         <form action={loginAction} className="flex flex-col gap-4">
-          <input type="hidden" name="csrfToken" value={csrfToken.token} />
+          <input type="hidden" name="csrfToken" value={csrfTokenValue} />
           <Label>
             Username or email
             <Input

@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 
-import { AppError } from "@/lib/app-error";
+import { AppError, asAppError } from "@/lib/app-error";
 import {
   createTokenId,
   getSigningSecret,
@@ -139,23 +139,38 @@ export async function validateSessionToken(
   token: string | null | undefined,
   now: Date = new Date(),
 ): Promise<SessionRecord | null> {
-  if (!token) {
-    return null;
+  try {
+    if (!token) {
+      return null;
+    }
+
+    const payload = verifySignedToken(token, getSessionSecret(), now);
+
+    if (!payload || !isSessionClaims(payload)) {
+      return null;
+    }
+
+    return {
+      expiresAt: new Date(payload.exp),
+      issuedAt: new Date(payload.iat),
+      sessionId: payload.sessionId,
+      userId: payload.userId,
+      username: payload.username,
+    };
+  } catch (error: unknown) {
+    const appError = asAppError(error, {
+      code: "SESSION_TOKEN_VALIDATION_FAILED",
+      message: "Unable to validate session token.",
+      statusCode: 500,
+    });
+
+    console.debug("[session] token validation failed", {
+      code: appError.code,
+      statusCode: appError.statusCode,
+    });
+
+    throw appError;
   }
-
-  const payload = verifySignedToken(token, getSessionSecret(), now);
-
-  if (!payload || !isSessionClaims(payload)) {
-    return null;
-  }
-
-  return {
-    expiresAt: new Date(payload.exp),
-    issuedAt: new Date(payload.iat),
-    sessionId: payload.sessionId,
-    userId: payload.userId,
-    username: payload.username,
-  };
 }
 
 export async function setSessionCookie(
@@ -178,10 +193,32 @@ export async function setSessionCookie(
 }
 
 export async function getSessionFromCookies(): Promise<SessionRecord | null> {
-  const store = await getCookieStore();
-  const token = store.get(getSessionCookieName())?.value;
+  console.debug("[session] retrieval start");
 
-  return validateSessionToken(token);
+  try {
+    const store = await getCookieStore();
+    const token = store.get(getSessionCookieName())?.value;
+    const session = await validateSessionToken(token);
+
+    console.debug("[session] retrieval complete", {
+      hasSession: Boolean(session),
+    });
+
+    return session;
+  } catch (error: unknown) {
+    const appError = asAppError(error, {
+      code: "SESSION_RETRIEVAL_FAILED",
+      message: "Unable to read session from cookies.",
+      statusCode: 500,
+    });
+
+    console.debug("[session] retrieval failed", {
+      code: appError.code,
+      statusCode: appError.statusCode,
+    });
+
+    throw appError;
+  }
 }
 
 export async function requireSession(): Promise<SessionRecord> {

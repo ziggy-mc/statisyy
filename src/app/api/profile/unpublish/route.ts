@@ -3,16 +3,20 @@ import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
 import { assertCsrfToken } from "@/lib/csrf";
 import { enforceQuota } from "@/lib/quota";
-import { getRequestContext } from "@/lib/request-context";
+import { getRequestContextSafe } from "@/lib/request-context";
 import { writeAuditLog } from "@/lib/audit-log";
 
 import { profileErrorResponse } from "@/features/profile/api";
 import { unpublishOwnerProfile } from "@/features/profile/service";
 
 export async function POST(request: Request): Promise<NextResponse> {
-  const requestContext = await getRequestContext();
+  const requestContext = await getRequestContextSafe("api.profile.unpublish.POST");
 
   try {
+    console.debug("[route] api.profile.unpublish.POST start", {
+      requestId: requestContext.requestId,
+    });
+
     await assertCsrfToken(request.headers.get("x-csrf-token"));
 
     const session = await requireSession();
@@ -31,6 +35,10 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     return NextResponse.json({ profile });
   } catch (error: unknown) {
+    console.debug("[route] api.profile.unpublish.POST failure", {
+      requestId: requestContext.requestId,
+    });
+
     writeAuditLog({
       action: "api.profile.unpublish",
       code: "PROFILE_UNPUBLISH_FAILED",

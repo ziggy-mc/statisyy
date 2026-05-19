@@ -1,3 +1,4 @@
+import { asAppError } from "@/lib/app-error";
 import Link from "next/link";
 
 import { setCsrfCookie } from "@/lib/csrf";
@@ -33,11 +34,41 @@ function readErrorMessage(errorCode: string | null): string | null {
 }
 
 export default async function SignupPage({ searchParams }: SignupPageProps) {
-  const csrfToken = await setCsrfCookie();
-  const params = await searchParams;
-  const rawError = params.error;
-  const errorCode = typeof rawError === "string" ? rawError : null;
-  const errorMessage = readErrorMessage(errorCode);
+  let csrfTokenValue = "";
+  let errorMessage: string | null = null;
+  let loadErrorCode: string | null = null;
+
+  try {
+    const csrfToken = await setCsrfCookie();
+    const params = await searchParams;
+    const rawError = params.error;
+    const errorCode = typeof rawError === "string" ? rawError : null;
+    errorMessage = readErrorMessage(errorCode);
+    csrfTokenValue = csrfToken.token;
+  } catch (error: unknown) {
+    const appError = asAppError(error, {
+      code: "SIGNUP_PAGE_LOAD_FAILED",
+      message: "Unable to load signup page.",
+      statusCode: 500,
+    });
+
+    console.debug("[page] signup render failed", {
+      code: appError.code,
+      statusCode: appError.statusCode,
+    });
+    loadErrorCode = appError.code;
+  }
+
+  if (loadErrorCode) {
+    return (
+      <PageSection>
+        <Heading>Sign up</Heading>
+        <Alert tone="error" role="alert">
+          Unable to load signup right now. ({loadErrorCode})
+        </Alert>
+      </PageSection>
+    );
+  }
 
   return (
     <PageSection>
@@ -50,7 +81,7 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
       ) : null}
       <Card>
         <form action={signupAction} className="flex flex-col gap-4">
-          <input type="hidden" name="csrfToken" value={csrfToken.token} />
+          <input type="hidden" name="csrfToken" value={csrfTokenValue} />
           <Label>
             Username
             <Input name="username" required />

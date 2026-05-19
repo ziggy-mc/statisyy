@@ -5,6 +5,7 @@ type RequestContext = Readonly<{
 }>;
 
 const UNKNOWN_CLIENT_IP = "unknown";
+const MAX_LOG_MESSAGE_LENGTH = 200;
 
 function readClientIpFromForwardedFor(forwardedFor: string | null): string | null {
   if (!forwardedFor) {
@@ -38,4 +39,29 @@ export async function getRequestContext(): Promise<RequestContext> {
     requestId: requestIdHeader?.trim().slice(0, 128) ?? null,
     userAgent: userAgentHeader?.trim().slice(0, 512) ?? null,
   };
+}
+
+function getDebugErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message.slice(0, MAX_LOG_MESSAGE_LENGTH);
+  }
+
+  return String(error).slice(0, MAX_LOG_MESSAGE_LENGTH);
+}
+
+export async function getRequestContextSafe(source: string): Promise<RequestContext> {
+  try {
+    return await getRequestContext();
+  } catch (error: unknown) {
+    console.debug("[request-context] failed to read request context", {
+      error: getDebugErrorMessage(error),
+      source,
+    });
+
+    return {
+      clientIp: UNKNOWN_CLIENT_IP,
+      requestId: null,
+      userAgent: null,
+    };
+  }
 }
