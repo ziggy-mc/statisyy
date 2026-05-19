@@ -103,6 +103,12 @@ export async function signupAction(formData: FormData): Promise<void> {
       statusCode: 500,
     });
 
+    console.debug("[auth-action] signup failure", {
+      code: appError.code,
+      requestId: requestContext.requestId,
+      statusCode: appError.statusCode,
+    });
+
     writeAuditLog({
       action: "auth.signup",
       code: appError.code,
@@ -181,6 +187,12 @@ export async function loginAction(formData: FormData): Promise<void> {
       statusCode: 500,
     });
 
+    console.debug("[auth-action] login failure", {
+      code: appError.code,
+      requestId: requestContext.requestId,
+      statusCode: appError.statusCode,
+    });
+
     writeAuditLog({
       action: "auth.login",
       code: appError.code,
@@ -228,6 +240,12 @@ export async function logoutAction(formData: FormData): Promise<void> {
       code: "LOGOUT_FAILED",
       message: "Unable to log out.",
       statusCode: 500,
+    });
+
+    console.debug("[auth-action] logout failure", {
+      code: appError.code,
+      requestId: requestContext.requestId,
+      statusCode: appError.statusCode,
     });
 
     writeAuditLog({
@@ -310,6 +328,12 @@ export async function verifyEmailAction(formData: FormData): Promise<void> {
       statusCode: 500,
     });
 
+    console.debug("[auth-action] verify-email failure", {
+      code: appError.code,
+      requestId: requestContext.requestId,
+      statusCode: appError.statusCode,
+    });
+
     writeAuditLog({
       action: "auth.verifyEmail",
       code: appError.code,
@@ -323,26 +347,3 @@ export async function verifyEmailAction(formData: FormData): Promise<void> {
     redirect(`/verify-email?error=${encodeURIComponent(appError.code)}`);
   }
 }
-    console.debug("[auth-action] verify-email failure", {
-      code: appError.code,
-      requestId: requestContext.requestId,
-      statusCode: appError.statusCode,
-    });
-
-    console.debug("[auth-action] logout failure", {
-      code: appError.code,
-      requestId: requestContext.requestId,
-      statusCode: appError.statusCode,
-    });
-
-    console.debug("[auth-action] login failure", {
-      code: appError.code,
-      requestId: requestContext.requestId,
-      statusCode: appError.statusCode,
-    });
-
-    console.debug("[auth-action] signup failure", {
-      code: appError.code,
-      requestId: requestContext.requestId,
-      statusCode: appError.statusCode,
-    });

@@ -33,64 +33,19 @@ function readLoginError(errorCode: string | null): string | null {
 }
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
+  let csrfTokenValue = "";
+  let loggedOut = false;
+  let errorMessage: string | null = null;
+  let loadErrorCode: string | null = null;
+
   try {
     const csrfToken = await setCsrfCookie();
     const params = await searchParams;
     const rawError = params.error;
-    const loggedOut = params.logged_out === "1";
+    loggedOut = params.logged_out === "1";
     const errorCode = typeof rawError === "string" ? rawError : null;
-    const errorMessage = readLoginError(errorCode);
-
-    return (
-      <PageSection>
-        <Heading>Log in</Heading>
-        <BodyText>Access your account.</BodyText>
-        {loggedOut ? (
-          <Alert tone="success" role="status">
-            You have been logged out.
-          </Alert>
-        ) : null}
-        {errorMessage ? (
-          <Alert tone="error" role="alert">
-            {errorMessage}
-          </Alert>
-        ) : null}
-        <Card>
-          <form action={loginAction} className="flex flex-col gap-4">
-            <input type="hidden" name="csrfToken" value={csrfToken.token} />
-            <Label>
-              Username or email
-              <Input
-                name="usernameOrEmail"
-                required
-                autoComplete="username"
-              />
-            </Label>
-            <Label>
-              Password
-              <Input
-                name="password"
-                type="password"
-                required
-                autoComplete="current-password"
-              />
-            </Label>
-            <Button type="submit">
-              Log in
-            </Button>
-          </form>
-        </Card>
-        <BodyText>
-          Need an account?{" "}
-          <Link
-            href="/signup"
-            className="font-medium text-neutral-900 underline underline-offset-2 dark:text-neutral-100"
-          >
-            Sign up
-          </Link>
-        </BodyText>
-      </PageSection>
-    );
+    errorMessage = readLoginError(errorCode);
+    csrfTokenValue = csrfToken.token;
   } catch (error: unknown) {
     const appError = asAppError(error, {
       code: "LOGIN_PAGE_LOAD_FAILED",
@@ -102,14 +57,68 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       code: appError.code,
       statusCode: appError.statusCode,
     });
+    loadErrorCode = appError.code;
+  }
 
+  if (loadErrorCode) {
     return (
       <PageSection>
         <Heading>Log in</Heading>
         <Alert tone="error" role="alert">
-          Unable to load login right now. ({appError.code})
+          Unable to load login right now. ({loadErrorCode})
         </Alert>
       </PageSection>
     );
   }
+
+  return (
+    <PageSection>
+      <Heading>Log in</Heading>
+      <BodyText>Access your account.</BodyText>
+      {loggedOut ? (
+        <Alert tone="success" role="status">
+          You have been logged out.
+        </Alert>
+      ) : null}
+      {errorMessage ? (
+        <Alert tone="error" role="alert">
+          {errorMessage}
+        </Alert>
+      ) : null}
+      <Card>
+        <form action={loginAction} className="flex flex-col gap-4">
+          <input type="hidden" name="csrfToken" value={csrfTokenValue} />
+          <Label>
+            Username or email
+            <Input
+              name="usernameOrEmail"
+              required
+              autoComplete="username"
+            />
+          </Label>
+          <Label>
+            Password
+            <Input
+              name="password"
+              type="password"
+              required
+              autoComplete="current-password"
+            />
+          </Label>
+          <Button type="submit">
+            Log in
+          </Button>
+        </form>
+      </Card>
+      <BodyText>
+        Need an account?{" "}
+        <Link
+          href="/signup"
+          className="font-medium text-neutral-900 underline underline-offset-2 dark:text-neutral-100"
+        >
+          Sign up
+        </Link>
+      </BodyText>
+    </PageSection>
+  );
 }
