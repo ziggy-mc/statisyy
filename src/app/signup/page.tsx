@@ -2,6 +2,16 @@ import Link from "next/link";
 
 import { setCsrfCookie } from "@/lib/csrf";
 
+import {
+  Alert,
+  BodyText,
+  Button,
+  Card,
+  Heading,
+  Input,
+  Label,
+  PageSection,
+} from "@/components/ui/primitives";
 import { signupAction } from "@/features/auth/actions";
 
 type SignupPageProps = Readonly<{
@@ -30,41 +40,48 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
   const errorMessage = readErrorMessage(errorCode);
 
   return (
-    <section className="mx-auto flex w-full max-w-md flex-col gap-4">
-      <h1 className="text-xl font-semibold">Sign up</h1>
-      <p className="text-sm">Create an account.</p>
+    <PageSection>
+      <Heading>Sign up</Heading>
+      <BodyText>Create an account.</BodyText>
       {errorMessage ? (
-        <p className="border border-red-500 p-2 text-sm" role="alert">
+        <Alert tone="error" role="alert">
           {errorMessage}
-        </p>
+        </Alert>
       ) : null}
-      <form action={signupAction} className="flex flex-col gap-3 border p-4">
-        <input type="hidden" name="csrfToken" value={csrfToken.token} />
-        <label className="flex flex-col gap-1 text-sm">
-          Username
-          <input name="username" required className="border px-2 py-1" />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          Email
-          <input name="email" type="email" required className="border px-2 py-1" />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          Password
-          <input
-            name="password"
-            type="password"
-            autoComplete="new-password"
-            required
-            className="border px-2 py-1"
-          />
-        </label>
-        <button type="submit" className="border px-3 py-2 text-sm">
-          Create account
-        </button>
-      </form>
-      <p className="text-sm">
-        Already have an account? <Link href="/login" className="underline">Log in</Link>
-      </p>
-    </section>
+      <Card>
+        <form action={signupAction} className="flex flex-col gap-4">
+          <input type="hidden" name="csrfToken" value={csrfToken.token} />
+          <Label>
+            Username
+            <Input name="username" required />
+          </Label>
+          <Label>
+            Email
+            <Input name="email" type="email" required />
+          </Label>
+          <Label>
+            Password
+            <Input
+              name="password"
+              type="password"
+              autoComplete="new-password"
+              required
+            />
+          </Label>
+          <Button type="submit">
+            Create account
+          </Button>
+        </form>
+      </Card>
+      <BodyText>
+        Already have an account?{" "}
+        <Link
+          href="/login"
+          className="font-medium text-neutral-900 underline underline-offset-2 dark:text-neutral-100"
+        >
+          Log in
+        </Link>
+      </BodyText>
+    </PageSection>
   );
 }

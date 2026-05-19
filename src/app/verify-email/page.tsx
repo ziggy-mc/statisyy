@@ -1,5 +1,15 @@
 import { setCsrfCookie } from "@/lib/csrf";
 
+import {
+  Alert,
+  BodyText,
+  Button,
+  Card,
+  Heading,
+  Input,
+  Label,
+  PageSection,
+} from "@/components/ui/primitives";
 import { verifyEmailAction } from "@/features/auth/actions";
 
 type VerifyEmailPageProps = Readonly<{
@@ -28,29 +38,30 @@ export default async function VerifyEmailPage({ searchParams }: VerifyEmailPageP
   const errorMessage = readVerifyError(errorCode);
 
   return (
-    <section className="mx-auto flex w-full max-w-md flex-col gap-4">
-      <h1 className="text-xl font-semibold">Verify email</h1>
-      <p className="text-sm">Enter your verification token.</p>
+    <PageSection>
+      <Heading>Verify email</Heading>
+      <BodyText>Enter your verification token.</BodyText>
       {errorMessage ? (
-        <p className="border border-red-500 p-2 text-sm" role="alert">
+        <Alert tone="error" role="alert">
           {errorMessage}
-        </p>
+        </Alert>
       ) : null}
-      <form action={verifyEmailAction} className="flex flex-col gap-3 border p-4">
-        <input type="hidden" name="csrfToken" value={csrfToken.token} />
-        <label className="flex flex-col gap-1 text-sm">
-          Token
-          <input
-            name="token"
-            defaultValue={defaultToken}
-            required
-            className="border px-2 py-1"
-          />
-        </label>
-        <button type="submit" className="border px-3 py-2 text-sm">
-          Verify email
-        </button>
-      </form>
-    </section>
+      <Card>
+        <form action={verifyEmailAction} className="flex flex-col gap-4">
+          <input type="hidden" name="csrfToken" value={csrfToken.token} />
+          <Label>
+            Token
+            <Input
+              name="token"
+              defaultValue={defaultToken}
+              required
+            />
+          </Label>
+          <Button type="submit">
+            Verify email
+          </Button>
+        </form>
+      </Card>
+    </PageSection>
   );
 }

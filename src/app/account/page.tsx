@@ -4,6 +4,18 @@ import { redirect } from "next/navigation";
 import { getSessionFromCookies } from "@/lib/auth";
 import { setCsrfCookie } from "@/lib/csrf";
 
+import {
+  Alert,
+  BodyText,
+  Button,
+  Card,
+  Heading,
+  Input,
+  Label,
+  PageSection,
+  Subheading,
+  TextArea,
+} from "@/components/ui/primitives";
 import { logoutAction } from "@/features/auth/actions";
 import { getAccountUser } from "@/features/auth/service";
 import {
@@ -56,122 +68,125 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
   const profileErrorMessage = readProfileError(profileErrorCode);
 
   return (
-    <section className="mx-auto flex w-full max-w-md flex-col gap-4">
-      <h1 className="text-xl font-semibold">Account</h1>
+    <PageSection>
+      <Heading>Account</Heading>
       {verifiedNotice ? (
-        <p className="border p-2 text-sm" role="status">
+        <Alert tone="success" role="status">
           Email verified.
-        </p>
+        </Alert>
       ) : null}
       {profileSavedNotice ? (
-        <p className="border p-2 text-sm" role="status">
+        <Alert tone="success" role="status">
           Profile draft saved.
-        </p>
+        </Alert>
       ) : null}
       {profilePublishedNotice ? (
-        <p className="border p-2 text-sm" role="status">
+        <Alert tone="success" role="status">
           Profile published.
-        </p>
+        </Alert>
       ) : null}
       {profileUnpublishedNotice ? (
-        <p className="border p-2 text-sm" role="status">
+        <Alert tone="info" role="status">
           Profile unpublished.
-        </p>
+        </Alert>
       ) : null}
       {profileErrorMessage ? (
-        <p className="border border-red-500 p-2 text-sm" role="alert">
+        <Alert tone="error" role="alert">
           {profileErrorMessage}
-        </p>
+        </Alert>
       ) : null}
-      <dl className="grid gap-2 border p-4 text-sm">
-        <div className="flex flex-col gap-1">
-          <dt className="font-medium">Username</dt>
-          <dd>{user.username}</dd>
-        </div>
-        <div className="flex flex-col gap-1">
-          <dt className="font-medium">Email</dt>
-          <dd>{user.email}</dd>
-        </div>
-        <div className="flex flex-col gap-1">
-          <dt className="font-medium">Email status</dt>
-          <dd>{user.emailVerifiedAt ? "Verified" : "Not verified"}</dd>
-        </div>
-      </dl>
+      <Card>
+        <dl className="grid gap-3 text-sm">
+          <div className="flex flex-col gap-1">
+            <dt className="font-medium">Username</dt>
+            <dd>{user.username}</dd>
+          </div>
+          <div className="flex flex-col gap-1">
+            <dt className="font-medium">Email</dt>
+            <dd>{user.email}</dd>
+          </div>
+          <div className="flex flex-col gap-1">
+            <dt className="font-medium">Email status</dt>
+            <dd>{user.emailVerifiedAt ? "Verified" : "Not verified"}</dd>
+          </div>
+        </dl>
+      </Card>
       {!user.emailVerifiedAt ? (
-        <p className="text-sm">
+        <BodyText>
           Your email is not verified. Use the verification token sent at signup on the{" "}
-          <Link className="underline" href="/verify-email">
+          <Link
+            className="font-medium text-neutral-900 underline underline-offset-2 dark:text-neutral-100"
+            href="/verify-email"
+          >
             verify email
           </Link>{" "}
           page.
-        </p>
+        </BodyText>
       ) : null}
-      <section className="grid gap-3 border p-4">
-        <h2 className="text-base font-semibold">Profile editor</h2>
-        <p className="text-sm">Status: {profile.isPublished ? "Published" : "Draft"}</p>
-        <form action={saveProfileDraftAction} className="grid gap-3">
+      <Card className="grid gap-4">
+        <Subheading>Profile editor</Subheading>
+        <BodyText>Status: {profile.isPublished ? "Published" : "Draft"}</BodyText>
+        <form action={saveProfileDraftAction} className="grid gap-4">
           <input type="hidden" name="csrfToken" value={csrfToken.token} />
-          <label className="flex flex-col gap-1 text-sm">
+          <Label>
             Display name
-            <input
+            <Input
               name="displayName"
               defaultValue={profile.displayName ?? ""}
               maxLength={80}
-              className="border px-2 py-1"
             />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
+          </Label>
+          <Label>
             Bio
-            <textarea
+            <TextArea
               name="bio"
               defaultValue={profile.bio ?? ""}
               maxLength={160}
               rows={3}
-              className="border px-2 py-1"
             />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
+          </Label>
+          <Label>
             Website URL
-            <input
+            <Input
               name="websiteUrl"
               defaultValue={profile.websiteUrl ?? ""}
-              className="border px-2 py-1"
             />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
+          </Label>
+          <Label>
             Avatar URL
-            <input
+            <Input
               name="avatarUrl"
               defaultValue={profile.avatarUrl ?? ""}
-              className="border px-2 py-1"
             />
-          </label>
-          <button type="submit" className="border px-3 py-2 text-sm">
+          </Label>
+          <Button type="submit">
             Save draft
-          </button>
+          </Button>
         </form>
         {profile.isPublished ? (
           <form action={unpublishProfileAction}>
             <input type="hidden" name="csrfToken" value={csrfToken.token} />
-            <button type="submit" className="border px-3 py-2 text-sm">
+            <Button type="submit" variant="secondary">
               Unpublish profile
-            </button>
+            </Button>
           </form>
         ) : (
           <form action={publishProfileAction}>
             <input type="hidden" name="csrfToken" value={csrfToken.token} />
-            <button type="submit" className="border px-3 py-2 text-sm">
+            <Button type="submit" variant="secondary">
               Publish profile
-            </button>
+            </Button>
           </form>
         )}
-      </section>
-      <form action={logoutAction} className="border p-4">
-        <input type="hidden" name="csrfToken" value={csrfToken.token} />
-        <button type="submit" className="border px-3 py-2 text-sm">
-          Log out
-        </button>
-      </form>
-    </section>
+      </Card>
+      <Card>
+        <form action={logoutAction}>
+          <input type="hidden" name="csrfToken" value={csrfToken.token} />
+          <Button type="submit" variant="danger">
+            Log out
+          </Button>
+        </form>
+      </Card>
+    </PageSection>
   );
 }
