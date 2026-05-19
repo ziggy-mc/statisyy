@@ -27,6 +27,11 @@ function getValidationErrorCode(error: ValidationError): string {
   return error.issues[0]?.code ?? "VALIDATION_ERROR";
 }
 
+const MISSING_EMAIL = "MISSING_EMAIL";
+const MISSING_IDENTIFIER = "MISSING_IDENTIFIER";
+const MISSING_TOKEN = "MISSING_TOKEN";
+const MISSING_USERNAME = "MISSING_USERNAME";
+
 function getAuditOutcome(statusCode: number): "denied" | "failure" {
   return statusCode === 429 || statusCode === 403 ? "denied" : "failure";
 }
@@ -35,11 +40,11 @@ export async function signupAction(formData: FormData): Promise<void> {
   const requestContext = await getRequestContext();
 
   try {
-    const username = getStringValue(formData, "username") ?? "unknown";
-    const email = getStringValue(formData, "email") ?? "";
+    const username = getStringValue(formData, "username") ?? MISSING_USERNAME;
+    const email = getStringValue(formData, "email") ?? MISSING_EMAIL;
 
     await assertCsrfToken(getStringValue(formData, "csrfToken"));
-    enforceQuota("auth.signup", `${requestContext.clientIp}:${email || username}`);
+    enforceQuota("auth.signup", `${requestContext.clientIp}:${email}:${username}`);
 
     const result = await signupUser({
       email: getStringValue(formData, "email"),
@@ -102,7 +107,7 @@ export async function loginAction(formData: FormData): Promise<void> {
   const requestContext = await getRequestContext();
 
   try {
-    const identifier = getStringValue(formData, "usernameOrEmail") ?? "unknown";
+    const identifier = getStringValue(formData, "usernameOrEmail") ?? MISSING_IDENTIFIER;
 
     await assertCsrfToken(getStringValue(formData, "csrfToken"));
     enforceQuota("auth.login", `${requestContext.clientIp}:${identifier}`);
@@ -208,7 +213,7 @@ export async function verifyEmailAction(formData: FormData): Promise<void> {
   const requestContext = await getRequestContext();
 
   try {
-    const token = getStringValue(formData, "token") ?? "missing-token";
+    const token = getStringValue(formData, "token") ?? MISSING_TOKEN;
 
     await assertCsrfToken(getStringValue(formData, "csrfToken"));
     enforceQuota("auth.verifyEmail", `${requestContext.clientIp}:${token}`);
