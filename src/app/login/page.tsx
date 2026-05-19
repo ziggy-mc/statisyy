@@ -2,6 +2,16 @@ import Link from "next/link";
 
 import { setCsrfCookie } from "@/lib/csrf";
 
+import {
+  Alert,
+  BodyText,
+  Button,
+  Card,
+  Heading,
+  Input,
+  Label,
+  PageSection,
+} from "@/components/ui/primitives";
 import { loginAction } from "@/features/auth/actions";
 
 type LoginPageProps = Readonly<{
@@ -30,47 +40,53 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const errorMessage = readLoginError(errorCode);
 
   return (
-    <section className="mx-auto flex w-full max-w-md flex-col gap-4">
-      <h1 className="text-xl font-semibold">Log in</h1>
-      <p className="text-sm">Access your account.</p>
+    <PageSection>
+      <Heading>Log in</Heading>
+      <BodyText>Access your account.</BodyText>
       {loggedOut ? (
-        <p className="border p-2 text-sm" role="status">
+        <Alert tone="success" role="status">
           You have been logged out.
-        </p>
+        </Alert>
       ) : null}
       {errorMessage ? (
-        <p className="border border-red-500 p-2 text-sm" role="alert">
+        <Alert tone="error" role="alert">
           {errorMessage}
-        </p>
+        </Alert>
       ) : null}
-      <form action={loginAction} className="flex flex-col gap-3 border p-4">
-        <input type="hidden" name="csrfToken" value={csrfToken.token} />
-        <label className="flex flex-col gap-1 text-sm">
-          Username or email
-          <input
-            name="usernameOrEmail"
-            required
-            autoComplete="username"
-            className="border px-2 py-1"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          Password
-          <input
-            name="password"
-            type="password"
-            required
-            autoComplete="current-password"
-            className="border px-2 py-1"
-          />
-        </label>
-        <button type="submit" className="border px-3 py-2 text-sm">
-          Log in
-        </button>
-      </form>
-      <p className="text-sm">
-        Need an account? <Link href="/signup" className="underline">Sign up</Link>
-      </p>
-    </section>
+      <Card>
+        <form action={loginAction} className="flex flex-col gap-4">
+          <input type="hidden" name="csrfToken" value={csrfToken.token} />
+          <Label>
+            Username or email
+            <Input
+              name="usernameOrEmail"
+              required
+              autoComplete="username"
+            />
+          </Label>
+          <Label>
+            Password
+            <Input
+              name="password"
+              type="password"
+              required
+              autoComplete="current-password"
+            />
+          </Label>
+          <Button type="submit">
+            Log in
+          </Button>
+        </form>
+      </Card>
+      <BodyText>
+        Need an account?{" "}
+        <Link
+          href="/signup"
+          className="font-medium text-neutral-900 underline underline-offset-2 dark:text-neutral-100"
+        >
+          Sign up
+        </Link>
+      </BodyText>
+    </PageSection>
   );
 }
