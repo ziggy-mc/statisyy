@@ -3,8 +3,11 @@
 import { redirect } from "next/navigation";
 
 import { asAppError } from "@/lib/app-error";
+import { writeAuditLog } from "@/lib/audit-log";
 import { setSessionCookie, clearSessionCookie, getSessionFromCookies } from "@/lib/auth";
 import { assertCsrfToken } from "@/lib/csrf";
+import { enforceQuota } from "@/lib/quota";
+import { getRequestContext } from "@/lib/request-context";
 import { ValidationError } from "@/lib/validation";
 
 import {
@@ -24,9 +27,19 @@ function getValidationErrorCode(error: ValidationError): string {
   return error.issues[0]?.code ?? "VALIDATION_ERROR";
 }
 
+function getAuditOutcome(statusCode: number): "denied" | "failure" {
+  return statusCode === 429 || statusCode === 403 ? "denied" : "failure";
+}
+
 export async function signupAction(formData: FormData): Promise<void> {
+  const requestContext = await getRequestContext();
+
   try {
+    const username = getStringValue(formData, "username") ?? "unknown";
+    const email = getStringValue(formData, "email") ?? "";
+
     await assertCsrfToken(getStringValue(formData, "csrfToken"));
+    enforceQuota("auth.signup", `${requestContext.clientIp}:${email || username}`);
 
     const result = await signupUser({
       email: getStringValue(formData, "email"),
@@ -39,9 +52,29 @@ export async function signupAction(formData: FormData): Promise<void> {
       username: result.user.username,
     });
 
+    writeAuditLog({
+      action: "auth.signup",
+      actorId: result.user.id,
+      details: {
+        clientIp: requestContext.clientIp,
+      },
+      outcome: "success",
+      requestId: requestContext.requestId,
+    });
+
     redirect(`/verify-email?token=${encodeURIComponent(result.verificationToken)}`);
   } catch (error: unknown) {
     if (error instanceof ValidationError) {
+      writeAuditLog({
+        action: "auth.signup",
+        code: getValidationErrorCode(error),
+        details: {
+          clientIp: requestContext.clientIp,
+        },
+        outcome: "failure",
+        requestId: requestContext.requestId,
+      });
+
       redirect(`/signup?error=${encodeURIComponent(getValidationErrorCode(error))}`);
     }
 
@@ -51,13 +84,28 @@ export async function signupAction(formData: FormData): Promise<void> {
       statusCode: 500,
     });
 
+    writeAuditLog({
+      action: "auth.signup",
+      code: appError.code,
+      details: {
+        clientIp: requestContext.clientIp,
+      },
+      outcome: getAuditOutcome(appError.statusCode),
+      requestId: requestContext.requestId,
+    });
+
     redirect(`/signup?error=${encodeURIComponent(appError.code)}`);
   }
 }
 
 export async function loginAction(formData: FormData): Promise<void> {
+  const requestContext = await getRequestContext();
+
   try {
+    const identifier = getStringValue(formData, "usernameOrEmail") ?? "unknown";
+
     await assertCsrfToken(getStringValue(formData, "csrfToken"));
+    enforceQuota("auth.login", `${requestContext.clientIp}:${identifier}`);
 
     const user = await loginUser({
       password: getStringValue(formData, "password"),
@@ -69,9 +117,29 @@ export async function loginAction(formData: FormData): Promise<void> {
       username: user.username,
     });
 
+    writeAuditLog({
+      action: "auth.login",
+      actorId: user.id,
+      details: {
+        clientIp: requestContext.clientIp,
+      },
+      outcome: "success",
+      requestId: requestContext.requestId,
+    });
+
     redirect("/account");
   } catch (error: unknown) {
     if (error instanceof ValidationError) {
+      writeAuditLog({
+        action: "auth.login",
+        code: getValidationErrorCode(error),
+        details: {
+          clientIp: requestContext.clientIp,
+        },
+        outcome: "failure",
+        requestId: requestContext.requestId,
+      });
+
       redirect(`/login?error=${encodeURIComponent(getValidationErrorCode(error))}`);
     }
 
@@ -81,14 +149,39 @@ export async function loginAction(formData: FormData): Promise<void> {
       statusCode: 500,
     });
 
+    writeAuditLog({
+      action: "auth.login",
+      code: appError.code,
+      details: {
+        clientIp: requestContext.clientIp,
+      },
+      outcome: getAuditOutcome(appError.statusCode),
+      requestId: requestContext.requestId,
+    });
+
     redirect(`/login?error=${encodeURIComponent(appError.code)}`);
   }
 }
 
 export async function logoutAction(formData: FormData): Promise<void> {
+  const requestContext = await getRequestContext();
+
   try {
     await assertCsrfToken(getStringValue(formData, "csrfToken"));
+
+    const session = await getSessionFromCookies();
     await clearSessionCookie();
+
+    writeAuditLog({
+      action: "auth.logout",
+      actorId: session?.userId,
+      details: {
+        clientIp: requestContext.clientIp,
+      },
+      outcome: "success",
+      requestId: requestContext.requestId,
+    });
+
     redirect("/login?logged_out=1");
   } catch (error: unknown) {
     const appError = asAppError(error, {
@@ -97,13 +190,28 @@ export async function logoutAction(formData: FormData): Promise<void> {
       statusCode: 500,
     });
 
+    writeAuditLog({
+      action: "auth.logout",
+      code: appError.code,
+      details: {
+        clientIp: requestContext.clientIp,
+      },
+      outcome: getAuditOutcome(appError.statusCode),
+      requestId: requestContext.requestId,
+    });
+
     redirect(`/account?error=${encodeURIComponent(appError.code)}`);
   }
 }
 
 export async function verifyEmailAction(formData: FormData): Promise<void> {
+  const requestContext = await getRequestContext();
+
   try {
+    const token = getStringValue(formData, "token") ?? "missing-token";
+
     await assertCsrfToken(getStringValue(formData, "csrfToken"));
+    enforceQuota("auth.verifyEmail", `${requestContext.clientIp}:${token}`);
 
     const result = await verifyEmailToken(getStringValue(formData, "token"));
     const session = await getSessionFromCookies();
@@ -117,9 +225,29 @@ export async function verifyEmailAction(formData: FormData): Promise<void> {
       });
     }
 
+    writeAuditLog({
+      action: "auth.verifyEmail",
+      actorId: result.userId,
+      details: {
+        clientIp: requestContext.clientIp,
+      },
+      outcome: "success",
+      requestId: requestContext.requestId,
+    });
+
     redirect("/account?verified=1");
   } catch (error: unknown) {
     if (error instanceof ValidationError) {
+      writeAuditLog({
+        action: "auth.verifyEmail",
+        code: getValidationErrorCode(error),
+        details: {
+          clientIp: requestContext.clientIp,
+        },
+        outcome: "failure",
+        requestId: requestContext.requestId,
+      });
+
       redirect(`/verify-email?error=${encodeURIComponent(getValidationErrorCode(error))}`);
     }
 
@@ -127,6 +255,16 @@ export async function verifyEmailAction(formData: FormData): Promise<void> {
       code: "VERIFY_EMAIL_FAILED",
       message: "Unable to verify email.",
       statusCode: 500,
+    });
+
+    writeAuditLog({
+      action: "auth.verifyEmail",
+      code: appError.code,
+      details: {
+        clientIp: requestContext.clientIp,
+      },
+      outcome: getAuditOutcome(appError.statusCode),
+      requestId: requestContext.requestId,
     });
 
     redirect(`/verify-email?error=${encodeURIComponent(appError.code)}`);
