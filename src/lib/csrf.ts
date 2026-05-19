@@ -1,4 +1,4 @@
-import { AppError } from "@/lib/app-error";
+import { AppError, asAppError } from "@/lib/app-error";
 import {
   createTokenId,
   getSigningSecret,
@@ -125,13 +125,38 @@ export async function validateCsrfToken(
   cookieToken: string | null | undefined,
   now: Date = new Date(),
 ): Promise<boolean> {
-  if (!submittedToken || !cookieToken || !safeEqualTokens(submittedToken, cookieToken)) {
-    return false;
+  console.debug("[csrf] validation start", {
+    hasCookieToken: Boolean(cookieToken),
+    hasSubmittedToken: Boolean(submittedToken),
+  });
+
+  try {
+    if (!submittedToken || !cookieToken || !safeEqualTokens(submittedToken, cookieToken)) {
+      return false;
+    }
+
+    const payload = verifySignedToken(submittedToken, getCsrfSecret(), now);
+    const isValidPayload = isCsrfPayload(payload);
+
+    console.debug("[csrf] validation complete", {
+      isValid: isValidPayload,
+    });
+
+    return isValidPayload;
+  } catch (error: unknown) {
+    const appError = asAppError(error, {
+      code: "CSRF_VALIDATION_FAILED",
+      message: "Unable to validate CSRF token.",
+      statusCode: 500,
+    });
+
+    console.debug("[csrf] validation failed", {
+      code: appError.code,
+      statusCode: appError.statusCode,
+    });
+
+    throw appError;
   }
-
-  const payload = verifySignedToken(submittedToken, getCsrfSecret(), now);
-
-  return isCsrfPayload(payload);
 }
 
 export async function validateCsrfTokenFromCookies(
@@ -147,13 +172,28 @@ export async function assertCsrfToken(
   submittedToken: string | null | undefined,
   now: Date = new Date(),
 ): Promise<void> {
-  const isValid = await validateCsrfTokenFromCookies(submittedToken, now);
+  try {
+    const isValid = await validateCsrfTokenFromCookies(submittedToken, now);
 
-  if (!isValid) {
-    throw new AppError({
-      code: "INVALID_CSRF_TOKEN",
-      message: "The CSRF token is missing or invalid.",
-      statusCode: 403,
+    if (!isValid) {
+      throw new AppError({
+        code: "INVALID_CSRF_TOKEN",
+        message: "The CSRF token is missing or invalid.",
+        statusCode: 403,
+      });
+    }
+  } catch (error: unknown) {
+    const appError = asAppError(error, {
+      code: "CSRF_ASSERTION_FAILED",
+      message: "Unable to assert CSRF token.",
+      statusCode: 500,
     });
+
+    console.debug("[csrf] assertion failed", {
+      code: appError.code,
+      statusCode: appError.statusCode,
+    });
+
+    throw appError;
   }
 }

@@ -76,10 +76,14 @@ export function getMongoConfig(): MongoConfig {
 
 export async function getMongoClient(): Promise<MongoClient> {
   if (!mongoClientPromise) {
+    console.debug("[mongodb] initializing client connection");
+
     const { uri } = getMongoConfig();
     mongoClientPromise = new MongoClient(uri, DEFAULT_MONGO_OPTIONS)
       .connect()
       .catch((error: unknown) => {
+        console.debug("[mongodb] client connection failed");
+
         mongoClientPromise = undefined;
         globalThis.__statisyyMongoClientPromise = undefined;
 
@@ -90,6 +94,8 @@ export async function getMongoClient(): Promise<MongoClient> {
           statusCode: 500,
         });
       });
+  } else {
+    console.debug("[mongodb] reusing existing client connection promise");
   }
 
   globalThis.__statisyyMongoClientPromise = mongoClientPromise;
@@ -98,6 +104,10 @@ export async function getMongoClient(): Promise<MongoClient> {
 }
 
 export async function getMongoDb(dbName?: string): Promise<Db> {
+  console.debug("[mongodb] resolving database handle", {
+    dbName: dbName ?? "default",
+  });
+
   const client = await getMongoClient();
   return client.db(dbName ?? getMongoConfig().dbName);
 }

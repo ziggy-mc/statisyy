@@ -1,3 +1,4 @@
+import { asAppError } from "@/lib/app-error";
 import Link from "next/link";
 
 import { setCsrfCookie } from "@/lib/csrf";
@@ -32,61 +33,83 @@ function readLoginError(errorCode: string | null): string | null {
 }
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
-  const csrfToken = await setCsrfCookie();
-  const params = await searchParams;
-  const rawError = params.error;
-  const loggedOut = params.logged_out === "1";
-  const errorCode = typeof rawError === "string" ? rawError : null;
-  const errorMessage = readLoginError(errorCode);
+  try {
+    const csrfToken = await setCsrfCookie();
+    const params = await searchParams;
+    const rawError = params.error;
+    const loggedOut = params.logged_out === "1";
+    const errorCode = typeof rawError === "string" ? rawError : null;
+    const errorMessage = readLoginError(errorCode);
 
-  return (
-    <PageSection>
-      <Heading>Log in</Heading>
-      <BodyText>Access your account.</BodyText>
-      {loggedOut ? (
-        <Alert tone="success" role="status">
-          You have been logged out.
-        </Alert>
-      ) : null}
-      {errorMessage ? (
+    return (
+      <PageSection>
+        <Heading>Log in</Heading>
+        <BodyText>Access your account.</BodyText>
+        {loggedOut ? (
+          <Alert tone="success" role="status">
+            You have been logged out.
+          </Alert>
+        ) : null}
+        {errorMessage ? (
+          <Alert tone="error" role="alert">
+            {errorMessage}
+          </Alert>
+        ) : null}
+        <Card>
+          <form action={loginAction} className="flex flex-col gap-4">
+            <input type="hidden" name="csrfToken" value={csrfToken.token} />
+            <Label>
+              Username or email
+              <Input
+                name="usernameOrEmail"
+                required
+                autoComplete="username"
+              />
+            </Label>
+            <Label>
+              Password
+              <Input
+                name="password"
+                type="password"
+                required
+                autoComplete="current-password"
+              />
+            </Label>
+            <Button type="submit">
+              Log in
+            </Button>
+          </form>
+        </Card>
+        <BodyText>
+          Need an account?{" "}
+          <Link
+            href="/signup"
+            className="font-medium text-neutral-900 underline underline-offset-2 dark:text-neutral-100"
+          >
+            Sign up
+          </Link>
+        </BodyText>
+      </PageSection>
+    );
+  } catch (error: unknown) {
+    const appError = asAppError(error, {
+      code: "LOGIN_PAGE_LOAD_FAILED",
+      message: "Unable to load login page.",
+      statusCode: 500,
+    });
+
+    console.debug("[page] login render failed", {
+      code: appError.code,
+      statusCode: appError.statusCode,
+    });
+
+    return (
+      <PageSection>
+        <Heading>Log in</Heading>
         <Alert tone="error" role="alert">
-          {errorMessage}
+          Unable to load login right now. ({appError.code})
         </Alert>
-      ) : null}
-      <Card>
-        <form action={loginAction} className="flex flex-col gap-4">
-          <input type="hidden" name="csrfToken" value={csrfToken.token} />
-          <Label>
-            Username or email
-            <Input
-              name="usernameOrEmail"
-              required
-              autoComplete="username"
-            />
-          </Label>
-          <Label>
-            Password
-            <Input
-              name="password"
-              type="password"
-              required
-              autoComplete="current-password"
-            />
-          </Label>
-          <Button type="submit">
-            Log in
-          </Button>
-        </form>
-      </Card>
-      <BodyText>
-        Need an account?{" "}
-        <Link
-          href="/signup"
-          className="font-medium text-neutral-900 underline underline-offset-2 dark:text-neutral-100"
-        >
-          Sign up
-        </Link>
-      </BodyText>
-    </PageSection>
-  );
+      </PageSection>
+    );
+  }
 }

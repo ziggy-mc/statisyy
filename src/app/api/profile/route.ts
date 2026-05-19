@@ -4,7 +4,7 @@ import { requireSession } from "@/lib/auth";
 import { assertCsrfToken } from "@/lib/csrf";
 import { parseJsonBodyOrEmpty } from "@/lib/http-body";
 import { enforceQuota } from "@/lib/quota";
-import { getRequestContext } from "@/lib/request-context";
+import { getRequestContextSafe } from "@/lib/request-context";
 import { writeAuditLog } from "@/lib/audit-log";
 
 import { getAccountUser } from "@/features/auth/service";
@@ -24,9 +24,13 @@ async function resolveSessionUsername(userId: string, username?: string): Promis
 }
 
 export async function GET(): Promise<NextResponse> {
-  const requestContext = await getRequestContext();
+  const requestContext = await getRequestContextSafe("api.profile.GET");
 
   try {
+    console.debug("[route] api.profile.GET start", {
+      requestId: requestContext.requestId,
+    });
+
     const session = await requireSession();
     const username = await resolveSessionUsername(session.userId, session.username);
     const profile = await getOwnerProfile(session.userId, username);
@@ -43,6 +47,10 @@ export async function GET(): Promise<NextResponse> {
 
     return NextResponse.json({ profile });
   } catch (error: unknown) {
+    console.debug("[route] api.profile.GET failure", {
+      requestId: requestContext.requestId,
+    });
+
     writeAuditLog({
       action: "api.profile.getOwner",
       code: "PROFILE_READ_FAILED",
@@ -61,9 +69,13 @@ export async function GET(): Promise<NextResponse> {
 }
 
 export async function PUT(request: Request): Promise<NextResponse> {
-  const requestContext = await getRequestContext();
+  const requestContext = await getRequestContextSafe("api.profile.PUT");
 
   try {
+    console.debug("[route] api.profile.PUT start", {
+      requestId: requestContext.requestId,
+    });
+
     await assertCsrfToken(request.headers.get("x-csrf-token"));
 
     const session = await requireSession();
@@ -88,6 +100,10 @@ export async function PUT(request: Request): Promise<NextResponse> {
 
     return NextResponse.json({ profile });
   } catch (error: unknown) {
+    console.debug("[route] api.profile.PUT failure", {
+      requestId: requestContext.requestId,
+    });
+
     writeAuditLog({
       action: "api.profile.saveDraft",
       code: "PROFILE_UPDATE_FAILED",

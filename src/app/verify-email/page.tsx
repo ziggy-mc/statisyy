@@ -1,3 +1,4 @@
+import { asAppError } from "@/lib/app-error";
 import { setCsrfCookie } from "@/lib/csrf";
 
 import {
@@ -29,39 +30,61 @@ function readVerifyError(errorCode: string | null): string | null {
 }
 
 export default async function VerifyEmailPage({ searchParams }: VerifyEmailPageProps) {
-  const csrfToken = await setCsrfCookie();
-  const params = await searchParams;
-  const tokenParam = params.token;
-  const errorParam = params.error;
-  const defaultToken = typeof tokenParam === "string" ? tokenParam : "";
-  const errorCode = typeof errorParam === "string" ? errorParam : null;
-  const errorMessage = readVerifyError(errorCode);
+  try {
+    const csrfToken = await setCsrfCookie();
+    const params = await searchParams;
+    const tokenParam = params.token;
+    const errorParam = params.error;
+    const defaultToken = typeof tokenParam === "string" ? tokenParam : "";
+    const errorCode = typeof errorParam === "string" ? errorParam : null;
+    const errorMessage = readVerifyError(errorCode);
 
-  return (
-    <PageSection>
-      <Heading>Verify email</Heading>
-      <BodyText>Enter your verification token.</BodyText>
-      {errorMessage ? (
+    return (
+      <PageSection>
+        <Heading>Verify email</Heading>
+        <BodyText>Enter your verification token.</BodyText>
+        {errorMessage ? (
+          <Alert tone="error" role="alert">
+            {errorMessage}
+          </Alert>
+        ) : null}
+        <Card>
+          <form action={verifyEmailAction} className="flex flex-col gap-4">
+            <input type="hidden" name="csrfToken" value={csrfToken.token} />
+            <Label>
+              Token
+              <Input
+                name="token"
+                defaultValue={defaultToken}
+                required
+              />
+            </Label>
+            <Button type="submit">
+              Verify email
+            </Button>
+          </form>
+        </Card>
+      </PageSection>
+    );
+  } catch (error: unknown) {
+    const appError = asAppError(error, {
+      code: "VERIFY_EMAIL_PAGE_LOAD_FAILED",
+      message: "Unable to load verify email page.",
+      statusCode: 500,
+    });
+
+    console.debug("[page] verify-email render failed", {
+      code: appError.code,
+      statusCode: appError.statusCode,
+    });
+
+    return (
+      <PageSection>
+        <Heading>Verify email</Heading>
         <Alert tone="error" role="alert">
-          {errorMessage}
+          Unable to load email verification right now. ({appError.code})
         </Alert>
-      ) : null}
-      <Card>
-        <form action={verifyEmailAction} className="flex flex-col gap-4">
-          <input type="hidden" name="csrfToken" value={csrfToken.token} />
-          <Label>
-            Token
-            <Input
-              name="token"
-              defaultValue={defaultToken}
-              required
-            />
-          </Label>
-          <Button type="submit">
-            Verify email
-          </Button>
-        </form>
-      </Card>
-    </PageSection>
-  );
+      </PageSection>
+    );
+  }
 }

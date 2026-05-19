@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { enforceQuota } from "@/lib/quota";
-import { getRequestContext } from "@/lib/request-context";
+import { getRequestContextSafe } from "@/lib/request-context";
 import { writeAuditLog } from "@/lib/audit-log";
 
 import { profileErrorResponse } from "@/features/profile/api";
@@ -15,9 +15,13 @@ export async function GET(
     }>;
   }>,
 ): Promise<NextResponse> {
-  const requestContext = await getRequestContext();
+  const requestContext = await getRequestContextSafe("api.profiles.username.GET");
 
   try {
+    console.debug("[route] api.profiles.username.GET start", {
+      requestId: requestContext.requestId,
+    });
+
     const params = await context.params;
     enforceQuota("profile.readPublic", `${requestContext.clientIp}:${params.username}`);
     const profile = await getPublishedProfile(params.username);
@@ -58,6 +62,10 @@ export async function GET(
 
     return NextResponse.json({ profile });
   } catch (error: unknown) {
+    console.debug("[route] api.profiles.username.GET failure", {
+      requestId: requestContext.requestId,
+    });
+
     writeAuditLog({
       action: "api.profile.getPublic",
       code: "PROFILE_READ_FAILED",

@@ -1,3 +1,4 @@
+import { asAppError } from "@/lib/app-error";
 import Link from "next/link";
 
 import { setCsrfCookie } from "@/lib/csrf";
@@ -33,55 +34,77 @@ function readErrorMessage(errorCode: string | null): string | null {
 }
 
 export default async function SignupPage({ searchParams }: SignupPageProps) {
-  const csrfToken = await setCsrfCookie();
-  const params = await searchParams;
-  const rawError = params.error;
-  const errorCode = typeof rawError === "string" ? rawError : null;
-  const errorMessage = readErrorMessage(errorCode);
+  try {
+    const csrfToken = await setCsrfCookie();
+    const params = await searchParams;
+    const rawError = params.error;
+    const errorCode = typeof rawError === "string" ? rawError : null;
+    const errorMessage = readErrorMessage(errorCode);
 
-  return (
-    <PageSection>
-      <Heading>Sign up</Heading>
-      <BodyText>Create an account.</BodyText>
-      {errorMessage ? (
+    return (
+      <PageSection>
+        <Heading>Sign up</Heading>
+        <BodyText>Create an account.</BodyText>
+        {errorMessage ? (
+          <Alert tone="error" role="alert">
+            {errorMessage}
+          </Alert>
+        ) : null}
+        <Card>
+          <form action={signupAction} className="flex flex-col gap-4">
+            <input type="hidden" name="csrfToken" value={csrfToken.token} />
+            <Label>
+              Username
+              <Input name="username" required />
+            </Label>
+            <Label>
+              Email
+              <Input name="email" type="email" required />
+            </Label>
+            <Label>
+              Password
+              <Input
+                name="password"
+                type="password"
+                autoComplete="new-password"
+                required
+              />
+            </Label>
+            <Button type="submit">
+              Create account
+            </Button>
+          </form>
+        </Card>
+        <BodyText>
+          Already have an account?{" "}
+          <Link
+            href="/login"
+            className="font-medium text-neutral-900 underline underline-offset-2 dark:text-neutral-100"
+          >
+            Log in
+          </Link>
+        </BodyText>
+      </PageSection>
+    );
+  } catch (error: unknown) {
+    const appError = asAppError(error, {
+      code: "SIGNUP_PAGE_LOAD_FAILED",
+      message: "Unable to load signup page.",
+      statusCode: 500,
+    });
+
+    console.debug("[page] signup render failed", {
+      code: appError.code,
+      statusCode: appError.statusCode,
+    });
+
+    return (
+      <PageSection>
+        <Heading>Sign up</Heading>
         <Alert tone="error" role="alert">
-          {errorMessage}
+          Unable to load signup right now. ({appError.code})
         </Alert>
-      ) : null}
-      <Card>
-        <form action={signupAction} className="flex flex-col gap-4">
-          <input type="hidden" name="csrfToken" value={csrfToken.token} />
-          <Label>
-            Username
-            <Input name="username" required />
-          </Label>
-          <Label>
-            Email
-            <Input name="email" type="email" required />
-          </Label>
-          <Label>
-            Password
-            <Input
-              name="password"
-              type="password"
-              autoComplete="new-password"
-              required
-            />
-          </Label>
-          <Button type="submit">
-            Create account
-          </Button>
-        </form>
-      </Card>
-      <BodyText>
-        Already have an account?{" "}
-        <Link
-          href="/login"
-          className="font-medium text-neutral-900 underline underline-offset-2 dark:text-neutral-100"
-        >
-          Log in
-        </Link>
-      </BodyText>
-    </PageSection>
-  );
+      </PageSection>
+    );
+  }
 }
