@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { requireSession } from "@/lib/auth";
+import { assertCsrfToken } from "@/lib/csrf";
+import { parseJsonBodyOrEmpty } from "@/lib/http-body";
+import { enforceQuota } from "@/lib/quota";
+import { getRequestContext } from "@/lib/request-context";
+import { writeAuditLog } from "@/lib/audit-log";
 
 import { getAccountUser } from "@/features/auth/service";
 import { profileErrorResponse } from "@/features/profile/api";
@@ -19,13 +24,35 @@ async function resolveSessionUsername(userId: string, username?: string): Promis
 }
 
 export async function GET(): Promise<NextResponse> {
+  const requestContext = await getRequestContext();
+
   try {
     const session = await requireSession();
     const username = await resolveSessionUsername(session.userId, session.username);
     const profile = await getOwnerProfile(session.userId, username);
 
+    writeAuditLog({
+      action: "api.profile.getOwner",
+      actorId: session.userId,
+      details: {
+        clientIp: requestContext.clientIp,
+      },
+      outcome: "success",
+      requestId: requestContext.requestId,
+    });
+
     return NextResponse.json({ profile });
   } catch (error: unknown) {
+    writeAuditLog({
+      action: "api.profile.getOwner",
+      code: "PROFILE_READ_FAILED",
+      details: {
+        clientIp: requestContext.clientIp,
+      },
+      outcome: "failure",
+      requestId: requestContext.requestId,
+    });
+
     return profileErrorResponse(error, {
       code: "PROFILE_READ_FAILED",
       message: "Unable to load owner profile.",
@@ -34,18 +61,43 @@ export async function GET(): Promise<NextResponse> {
 }
 
 export async function PUT(request: Request): Promise<NextResponse> {
+  const requestContext = await getRequestContext();
+
   try {
+    await assertCsrfToken(request.headers.get("x-csrf-token"));
+
     const session = await requireSession();
     const username = await resolveSessionUsername(session.userId, session.username);
-    const payload = (await request.json()) as unknown;
+    enforceQuota("profile.saveDraft", `${requestContext.clientIp}:${session.userId}`);
+    const payload = await parseJsonBodyOrEmpty(request);
     const profile = await saveOwnerProfileDraft({
       ownerId: session.userId,
       payload,
       username,
     });
 
+    writeAuditLog({
+      action: "api.profile.saveDraft",
+      actorId: session.userId,
+      details: {
+        clientIp: requestContext.clientIp,
+      },
+      outcome: "success",
+      requestId: requestContext.requestId,
+    });
+
     return NextResponse.json({ profile });
   } catch (error: unknown) {
+    writeAuditLog({
+      action: "api.profile.saveDraft",
+      code: "PROFILE_UPDATE_FAILED",
+      details: {
+        clientIp: requestContext.clientIp,
+      },
+      outcome: "failure",
+      requestId: requestContext.requestId,
+    });
+
     return profileErrorResponse(error, {
       code: "PROFILE_UPDATE_FAILED",
       message: "Unable to update owner profile.",
