@@ -159,8 +159,8 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
       </Card>
       {!user.emailVerifiedAt ? (
         <BodyText>
-          Clerk requires verified email before login. Please finish verification in your
-          Clerk account, then sign in again.
+          Clerk requires verified email before login. Check your inbox for Clerk&apos;s
+          verification email, open that link, and then sign in again.
         </BodyText>
       ) : null}
       <Card className="grid gap-4">
