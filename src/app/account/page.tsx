@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
 
@@ -160,14 +159,8 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
       </Card>
       {!user.emailVerifiedAt ? (
         <BodyText>
-          Your email is not verified. Use the verification token sent at signup on the{" "}
-          <Link
-            className="font-medium text-neutral-900 underline underline-offset-2 dark:text-neutral-100"
-            href="/verify-email"
-          >
-            verify email
-          </Link>{" "}
-          page.
+          Clerk requires verified email before login. Check your inbox for Clerk&apos;s
+          verification email, open that link, and then sign in again.
         </BodyText>
       ) : null}
       <Card className="grid gap-4">
