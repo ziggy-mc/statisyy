@@ -10,6 +10,7 @@
     "test": "tsx --test src/**/*.test.ts"
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.3.7",
     "mongodb": "^7.2.0",
     "next": "16.2.6",
     "react": "19.2.4",
