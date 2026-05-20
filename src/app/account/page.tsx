@@ -160,14 +160,16 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
       </Card>
       {!user.emailVerifiedAt ? (
         <BodyText>
-          Your email is not verified. Use the verification token sent at signup on the{" "}
+          Clerk requires verified email before login. Please finish verification on the{" "}
           <Link
             className="font-medium text-neutral-900 underline underline-offset-2 dark:text-neutral-100"
-            href="/verify-email"
+            href="https://clerk.com/"
+            rel="noreferrer"
+            target="_blank"
           >
-            verify email
+            Clerk website
           </Link>{" "}
-          page.
+          and then sign in again.
         </BodyText>
       ) : null}
       <Card className="grid gap-4">
